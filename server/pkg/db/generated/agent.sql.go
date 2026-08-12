@@ -6478,6 +6478,30 @@ func (q *Queries) SetAgentTaskBranchName(ctx context.Context, arg SetAgentTaskBr
 	return err
 }
 
+const setAgentTaskErrorIfEmpty = `-- name: SetAgentTaskErrorIfEmpty :exec
+UPDATE agent_task_queue
+SET error = $1,
+    failure_reason = COALESCE(failure_reason, $2)
+WHERE id = $3 AND (error IS NULL OR error = '')
+`
+
+type SetAgentTaskErrorIfEmptyParams struct {
+	Error         pgtype.Text `json:"error"`
+	FailureReason pgtype.Text `json:"failure_reason"`
+	ID            pgtype.UUID `json:"id"`
+}
+
+// Companion to SetAgentTaskBranchName for the cancel-ack path. A cancelled
+// worktree task whose Finalize ABORTED has no branch to deliver — the error
+// text carrying the preserved-worktree path is the only pointer to the agent's
+// work, and the cancel flow discarded the rest of the result. A user-initiated
+// cancel leaves error NULL, so filling it here never overwrites a reason
+// recorded by a fail callback or the claim gate.
+func (q *Queries) SetAgentTaskErrorIfEmpty(ctx context.Context, arg SetAgentTaskErrorIfEmptyParams) error {
+	_, err := q.db.Exec(ctx, setAgentTaskErrorIfEmpty, arg.Error, arg.FailureReason, arg.ID)
+	return err
+}
+
 const setDeferredChannelIssueTaskRuntimeOverlay = `-- name: SetDeferredChannelIssueTaskRuntimeOverlay :execrows
 UPDATE agent_task_queue
 SET runtime_mcp_overlay = $1,
