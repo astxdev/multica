@@ -134,6 +134,8 @@ function makeIssue(assigneeType: IssueAssigneeType): Issue {
     labels: [],
     created_at: "2026-08-12T00:00:00Z",
     updated_at: "2026-08-12T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
   };
 }
 

@@ -2,6 +2,7 @@
 
 import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
   CalendarDays,
@@ -1166,6 +1167,7 @@ export function IssueFilterMenu({
   const includeNoProject = useViewStore((s) => s.includeNoProject);
   const labelFilters = useViewStore((s) => s.labelFilters);
   const propertyFilters = useViewStore((s) => s.propertyFilters);
+  const includeArchived = useViewStore((s) => s.includeArchived);
   const viewStoreApi = useViewStoreApi();
   const act = viewStoreApi.getState();
   const wsId = useWorkspaceId();
@@ -1504,6 +1506,20 @@ export function IssueFilterMenu({
                 </DropdownMenuSub>
               );
             })}
+
+            {/* Show archived — a display toggle, not a saved-view-aware
+                filter dimension, so it sits outside hasActiveFilters /
+                viewBaseline and gets its own separator. */}
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={includeArchived}
+              onCheckedChange={() => act.toggleIncludeArchived()}
+              className={FILTER_ITEM_CLASS}
+            >
+              <HoverCheck checked={includeArchived} />
+              <Archive className="size-3.5 text-muted-foreground" />
+              {t(($) => $.filters.show_archived)}
+            </DropdownMenuCheckboxItem>
 
             {/* Reset */}
             {hasActiveFilters && (

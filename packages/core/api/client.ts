@@ -988,6 +988,14 @@ export class ApiClient {
     await this.fetch(`/api/issues/${id}`, { method: "DELETE" });
   }
 
+  async archiveIssue(id: string): Promise<Issue> {
+    return this.fetch(`/api/issues/${id}/archive`, { method: "POST" });
+  }
+
+  async restoreIssue(id: string): Promise<Issue> {
+    return this.fetch(`/api/issues/${id}/restore`, { method: "POST" });
+  }
+
   async batchUpdateIssues(issueIds: string[], updates: UpdateIssueRequest): Promise<{ updated: number }> {
     return this.fetch("/api/issues/batch-update", {
       method: "POST",

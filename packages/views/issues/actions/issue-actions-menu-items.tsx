@@ -4,6 +4,8 @@ import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowDown,
   ArrowUp,
   Calendar,
@@ -113,6 +115,9 @@ export function IssueActionsMenuItems({
     removeParent,
     openAddChild,
     openDeleteConfirm,
+    isArchived,
+    archiveIssue,
+    restoreIssue,
   } = actions;
 
   // Subscribe to the issue's task list so the cache is warm by the time the
@@ -314,6 +319,18 @@ export function IssueActionsMenuItems({
       </P.Sub>
 
       <P.Separator />
+
+      {isArchived ? (
+        <P.Item onClick={restoreIssue}>
+          <ArchiveRestore className="h-3.5 w-3.5" />
+          {t(($) => $.actions.restore_issue)}
+        </P.Item>
+      ) : (
+        <P.Item onClick={archiveIssue}>
+          <Archive className="h-3.5 w-3.5" />
+          {t(($) => $.actions.archive_issue)}
+        </P.Item>
+      )}
 
       <P.Item
         variant="destructive"

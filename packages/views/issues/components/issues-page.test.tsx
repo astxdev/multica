@@ -538,6 +538,8 @@ const mockIssues: Issue[] = [
     due_date: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
   },
   {
     ...issueDefaults,
@@ -557,6 +559,8 @@ const mockIssues: Issue[] = [
     due_date: "2026-02-01T00:00:00Z",
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
   },
   {
     ...issueDefaults,
@@ -576,6 +580,8 @@ const mockIssues: Issue[] = [
     due_date: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
   },
   {
     ...issueDefaults,
@@ -595,6 +601,8 @@ const mockIssues: Issue[] = [
     due_date: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
   },
 ];
 

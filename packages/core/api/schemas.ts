@@ -770,6 +770,9 @@ export const IssueSchema = z.object({
   labels: z.array(z.unknown()).optional(),
   created_at: z.string(),
   updated_at: z.string(),
+  // Older backends predate archiving; default to null (not archived).
+  archived_at: z.string().nullable().default(null),
+  archived_by: z.string().nullable().default(null),
 }).loose();
 
 export const ListIssuesResponseSchema = z.object({

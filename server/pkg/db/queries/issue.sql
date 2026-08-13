@@ -7,7 +7,7 @@
 -- "Assigned to me"), and the two filters must produce disjoint result sets.
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage, i.properties
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage, i.properties, i.archived_at, i.archived_by
 FROM issue i
 WHERE i.workspace_id = $1
   AND (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
@@ -64,6 +64,18 @@ LIMIT $2 OFFSET $3;
 -- name: GetIssue :one
 SELECT * FROM issue
 WHERE id = $1;
+
+-- name: ArchiveIssue :one
+-- archived_at IS NOT NULL means the issue is hidden from the default Issues
+-- view (compileIssueTableQuery); same convention as agent.archived_at.
+UPDATE issue SET archived_at = now(), archived_by = $2, updated_at = now()
+WHERE id = $1 AND workspace_id = $3
+RETURNING *;
+
+-- name: RestoreIssue :one
+UPDATE issue SET archived_at = NULL, archived_by = NULL, updated_at = now()
+WHERE id = $1 AND workspace_id = $2
+RETURNING *;
 
 -- name: GetIssueGCStatus :one
 SELECT workspace_id, status, updated_at

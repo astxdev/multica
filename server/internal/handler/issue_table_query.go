@@ -94,6 +94,7 @@ type issueTableFiltersRequest struct {
 	WorkingOnly       bool                         `json:"working_only,omitempty"`
 	WorkingIssueIDs   []string                     `json:"working_issue_ids,omitempty"`
 	IncludeSubIssues  *bool                        `json:"include_sub_issues,omitempty"`
+	IncludeArchived   bool                         `json:"include_archived,omitempty"`
 }
 
 type issueTableSortRequest struct {
@@ -411,6 +412,13 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 	addArg := func(value any) string {
 		args = append(args, value)
 		return "$" + strconv.Itoa(len(args))
+	}
+
+	// Archived issues are hidden from the Issues view by default — the same
+	// convention as agent.archived_at — unless the caller explicitly asks
+	// to include them (the "Show archived" filter).
+	if !spec.Filters.IncludeArchived {
+		where = append(where, "i.archived_at IS NULL")
 	}
 
 	for _, status := range spec.Filters.Statuses {

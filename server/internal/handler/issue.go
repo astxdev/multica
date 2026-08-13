@@ -71,6 +71,11 @@ type IssueResponse struct {
 	// preserves whatever labels are already in cache. nil pointer = "field
 	// absent, do not touch"; non-nil (incl. empty slice) = authoritative list.
 	Labels *[]LabelResponse `json:"labels,omitempty"`
+	// ArchivedAt/ArchivedBy are non-nil once the issue is archived (hidden
+	// from the default Issues view — see compileIssueTableQuery). Mirrors
+	// the agent.archived_at / agent.archived_by convention.
+	ArchivedAt *string `json:"archived_at"`
+	ArchivedBy *string `json:"archived_by"`
 }
 
 // validIssueStatuses / validIssuePriorities mirror the CHECK constraints on
@@ -115,6 +120,8 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		UpdatedAt:     timestampToString(i.UpdatedAt),
 		Metadata:      parseIssueMetadata(i.Metadata),
 		Properties:    parseIssueProperties(i.Properties),
+		ArchivedAt:    timestampToPtr(i.ArchivedAt),
+		ArchivedBy:    uuidToPtr(i.ArchivedBy),
 	}
 }
 
@@ -144,6 +151,8 @@ func issueListRowToResponse(i db.ListIssuesRow, issuePrefix string) IssueRespons
 		UpdatedAt:     timestampToString(i.UpdatedAt),
 		Metadata:      parseIssueMetadata(i.Metadata),
 		Properties:    parseIssueProperties(i.Properties),
+		ArchivedAt:    timestampToPtr(i.ArchivedAt),
+		ArchivedBy:    uuidToPtr(i.ArchivedBy),
 	}
 }
 
@@ -3346,6 +3355,80 @@ func (h *Handler) isAgentAssigneeReady(ctx context.Context, issue db.Issue) bool
 	}
 
 	return true
+}
+
+// ArchiveIssue hides the issue from the default Issues view
+// (compileIssueTableQuery excludes archived_at IS NOT NULL rows unless the
+// caller passes include_archived) without deleting it or touching any
+// agent task currently running against it — archiving is purely a
+// visibility change, unlike agent archival which also cancels the agent's
+// active work.
+func (h *Handler) ArchiveIssue(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	issue, ok := h.loadIssueForUser(w, r, id)
+	if !ok {
+		return
+	}
+	if issue.ArchivedAt.Valid {
+		writeError(w, http.StatusConflict, "issue is already archived")
+		return
+	}
+
+	userID := requestUserID(r)
+	workspaceID := uuidToString(issue.WorkspaceID)
+	archived, err := h.Queries.ArchiveIssue(r.Context(), db.ArchiveIssueParams{
+		ID:          issue.ID,
+		ArchivedBy:  parseUUID(userID),
+		WorkspaceID: issue.WorkspaceID,
+	})
+	if err != nil {
+		slog.Warn("archive issue failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id)...)
+		writeError(w, http.StatusInternalServerError, "failed to archive issue")
+		return
+	}
+
+	prefix := h.getIssuePrefix(r.Context(), archived.WorkspaceID)
+	resp := issueToResponse(archived, prefix)
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	// issue:updated triggers the client's unconditional Table-query
+	// invalidation (onIssueUpdated), which is what actually drops the row
+	// from every connected client's Issues view — no dedicated
+	// issue:archived event needed.
+	h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{"issue": resp})
+	slog.Info("issue archived", append(logger.RequestAttrs(r), "issue_id", id, "workspace_id", workspaceID)...)
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// RestoreIssue reverses ArchiveIssue.
+func (h *Handler) RestoreIssue(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	issue, ok := h.loadIssueForUser(w, r, id)
+	if !ok {
+		return
+	}
+	if !issue.ArchivedAt.Valid {
+		writeError(w, http.StatusConflict, "issue is not archived")
+		return
+	}
+
+	userID := requestUserID(r)
+	workspaceID := uuidToString(issue.WorkspaceID)
+	restored, err := h.Queries.RestoreIssue(r.Context(), db.RestoreIssueParams{
+		ID:          issue.ID,
+		WorkspaceID: issue.WorkspaceID,
+	})
+	if err != nil {
+		slog.Warn("restore issue failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id)...)
+		writeError(w, http.StatusInternalServerError, "failed to restore issue")
+		return
+	}
+
+	prefix := h.getIssuePrefix(r.Context(), restored.WorkspaceID)
+	resp := issueToResponse(restored, prefix)
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{"issue": resp})
+	slog.Info("issue restored", append(logger.RequestAttrs(r), "issue_id", id, "workspace_id", workspaceID)...)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {

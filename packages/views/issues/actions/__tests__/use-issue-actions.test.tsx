@@ -43,8 +43,12 @@ vi.mock("@multica/core/pins", () => ({
 }));
 
 const mockUpdateMutate = vi.fn();
+const mockArchiveMutate = vi.fn();
+const mockRestoreMutate = vi.fn();
 vi.mock("@multica/core/issues/mutations", () => ({
   useUpdateIssue: () => ({ mutate: mockUpdateMutate }),
+  useArchiveIssue: () => ({ mutate: mockArchiveMutate }),
+  useRestoreIssue: () => ({ mutate: mockRestoreMutate }),
 }));
 
 vi.mock("@multica/core/paths", async () => {

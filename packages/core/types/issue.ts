@@ -66,4 +66,8 @@ export interface Issue {
   labels?: Label[];
   created_at: string;
   updated_at: string;
+  // Non-null once the issue is archived (hidden from the default Issues
+  // view — see compileIssueTableQuery). Mirrors agent archived_at/archived_by.
+  archived_at: string | null;
+  archived_by: string | null;
 }

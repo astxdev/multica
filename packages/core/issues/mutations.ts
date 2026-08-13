@@ -377,6 +377,35 @@ export function useDeleteIssue() {
   });
 }
 
+// Archive/restore are pure visibility toggles — no parent/project/gantt
+// cascades to invalidate, unlike delete. The server's issue:updated
+// broadcast (onIssueUpdated) already invalidates issueKeys.tableAll for
+// every connected client; these onSuccess invalidations just make the
+// mutating user's own view catch up without waiting on the WS round trip.
+export function useArchiveIssue() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (id: string) => api.archiveIssue(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.tableAll(wsId) });
+    },
+  });
+}
+
+export function useRestoreIssue() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (id: string) => api.restoreIssue(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.tableAll(wsId) });
+    },
+  });
+}
+
 export function useBatchUpdateIssues() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();

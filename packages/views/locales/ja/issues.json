@@ -41,6 +41,8 @@
     "no_labels": "まだラベルがありません",
     "no_assignee": "担当者なし",
     "no_project": "プロジェクトなし",
+    "show_archived": "アーカイブ済みを表示",
+    "archived_badge": "アーカイブ済み",
     "section_status": "ステータス",
     "section_priority": "優先度",
     "section_assignee": "担当者",
@@ -603,6 +605,12 @@
     "remove_parent_issue": "親タスクを解除",
     "remove_parent_issue_success": "親タスクを解除しました",
     "add_sub_issue": "サブタスクを追加...",
+    "archive_issue": "タスクをアーカイブ",
+    "archive_success": "タスクをアーカイブしました",
+    "archive_failed": "タスクのアーカイブに失敗しました",
+    "restore_issue": "タスクを復元",
+    "restore_success": "タスクを復元しました",
+    "restore_failed": "タスクの復元に失敗しました",
     "delete_issue": "タスクを削除"
   },
   "pickers": {

@@ -194,6 +194,12 @@ export interface IssueViewState {
   // running state changes second-to-second, a persisted toggle would let
   // users return to an empty list with no obvious cause.
   agentRunningFilter: boolean;
+  // When true, archived issues are included in the Issues view instead of
+  // being hidden by default (compileIssueTableQuery excludes archived_at IS
+  // NOT NULL rows unless this is set). Not persisted — same reasoning as
+  // agentRunningFilter: an accidentally-stuck-on toggle would leave the
+  // user staring at a list of hidden issues with no obvious cause.
+  includeArchived: boolean;
   sortBy: SortField;
   sortDirection: SortDirection;
   cardProperties: CardProperties;
@@ -237,6 +243,7 @@ export interface IssueViewState {
   togglePropertyFilter: (propertyId: string, optionId: string) => void;
   setDateFilter: (filter: IssueDateFilter | null) => void;
   toggleAgentRunningFilter: () => void;
+  toggleIncludeArchived: () => void;
   hideStatus: (status: IssueStatus) => void;
   showStatus: (status: IssueStatus) => void;
   clearFilters: () => void;
@@ -282,6 +289,7 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   propertyFilters: {},
   dateFilter: null,
   agentRunningFilter: false,
+  includeArchived: false,
   sortBy: "position",
   sortDirection: "asc",
   cardProperties: {
@@ -382,6 +390,8 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   setDateFilter: (filter) => set({ dateFilter: filter }),
   toggleAgentRunningFilter: () =>
     set((state) => ({ agentRunningFilter: !state.agentRunningFilter })),
+  toggleIncludeArchived: () =>
+    set((state) => ({ includeArchived: !state.includeArchived })),
   hideStatus: (status) =>
     set((state) => {
       // If no filter active, activate filter with all EXCEPT this one
@@ -411,6 +421,7 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
       propertyFilters: {},
       dateFilter: null,
       agentRunningFilter: false,
+      includeArchived: false,
     }),
   resetFiltersTo: (snapshot) => set({ ...snapshot }),
   clearFilterDimension: (dimension) =>

@@ -41,6 +41,8 @@
     "no_labels": "No labels yet",
     "no_assignee": "No assignee",
     "no_project": "No project",
+    "show_archived": "Show archived",
+    "archived_badge": "Archived",
     "section_status": "Status",
     "section_priority": "Priority",
     "section_assignee": "Assignee",
@@ -633,6 +635,12 @@
     "remove_parent_issue": "Remove parent issue",
     "remove_parent_issue_success": "Removed parent issue",
     "add_sub_issue": "Add sub-issue...",
+    "archive_issue": "Archive issue",
+    "archive_success": "Issue archived",
+    "archive_failed": "Failed to archive issue",
+    "restore_issue": "Restore issue",
+    "restore_success": "Issue restored",
+    "restore_failed": "Failed to restore issue",
     "delete_issue": "Delete issue"
   },
   "pickers": {

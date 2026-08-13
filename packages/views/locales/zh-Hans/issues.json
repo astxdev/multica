@@ -41,6 +41,8 @@
     "no_labels": "还没有标签",
     "no_assignee": "无负责人",
     "no_project": "无项目",
+    "show_archived": "显示已归档",
+    "archived_badge": "已归档",
     "section_status": "状态",
     "section_priority": "优先级",
     "section_assignee": "负责人",
@@ -603,6 +605,12 @@
     "remove_parent_issue": "移除父任务",
     "remove_parent_issue_success": "已移除父任务",
     "add_sub_issue": "添加子任务...",
+    "archive_issue": "归档任务",
+    "archive_success": "任务已归档",
+    "archive_failed": "归档任务失败",
+    "restore_issue": "恢复任务",
+    "restore_success": "任务已恢复",
+    "restore_failed": "恢复任务失败",
     "delete_issue": "删除任务"
   },
   "pickers": {

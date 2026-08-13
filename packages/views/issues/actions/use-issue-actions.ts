@@ -8,7 +8,11 @@ import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useModalStore } from "@multica/core/modals";
-import { useUpdateIssue } from "@multica/core/issues/mutations";
+import {
+  useArchiveIssue,
+  useRestoreIssue,
+  useUpdateIssue,
+} from "@multica/core/issues/mutations";
 import { pinListOptions, useCreatePin, useDeletePin } from "@multica/core/pins";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { useNavigation } from "../../navigation";
@@ -26,6 +30,9 @@ export interface UseIssueActionsResult {
   removeParent: () => void;
   openAddChild: () => void;
   openDeleteConfirm: (opts?: { onDeletedFallbackPath?: string }) => void;
+  isArchived: boolean;
+  archiveIssue: () => void;
+  restoreIssue: () => void;
 }
 
 /**
@@ -53,10 +60,14 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     );
 
   const updateIssue = useUpdateIssue();
+  const archiveIssueMutation = useArchiveIssue();
+  const restoreIssueMutation = useRestoreIssue();
   const surfaceActions = useIssueSurfaceActionsOptional();
   const createPin = useCreatePin();
   const deletePin = useDeletePin();
   const openModal = useModalStore((s) => s.open);
+
+  const isArchived = !!issue?.archived_at;
 
   const issueId = issue?.id ?? null;
   const issueIdentifier = issue?.identifier ?? null;
@@ -246,6 +257,34 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     [openModal, issueId, issueIdentifier],
   );
 
+  // Reversible and non-destructive (unlike delete), so both apply directly —
+  // no confirm modal — with a success/error toast, same as removeParent.
+  const archiveIssue = useCallback(() => {
+    if (!issueId) return;
+    archiveIssueMutation.mutate(issueId, {
+      onSuccess: () => toast.success(t(($) => $.actions.archive_success)),
+      onError: (err) =>
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : t(($) => $.actions.archive_failed),
+        ),
+    });
+  }, [issueId, archiveIssueMutation, t]);
+
+  const restoreIssue = useCallback(() => {
+    if (!issueId) return;
+    restoreIssueMutation.mutate(issueId, {
+      onSuccess: () => toast.success(t(($) => $.actions.restore_success)),
+      onError: (err) =>
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : t(($) => $.actions.restore_failed),
+        ),
+    });
+  }, [issueId, restoreIssueMutation, t]);
+
   return {
     isPinned,
     updateField,
@@ -257,5 +296,8 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     removeParent,
     openAddChild,
     openDeleteConfirm,
+    isArchived,
+    archiveIssue,
+    restoreIssue,
   };
 }

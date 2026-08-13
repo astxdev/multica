@@ -270,6 +270,7 @@ export interface IssueTableFilters {
    *  `/api/working-agents`. An explicit empty list matches nothing. */
   working_issue_ids?: string[];
   include_sub_issues?: boolean;
+  include_archived?: boolean;
 }
 
 export type IssueTableSortField =

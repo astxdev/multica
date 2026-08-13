@@ -177,6 +177,11 @@ export const BoardCardContent = memo(function BoardCardContent({
         <div className="flex items-center gap-1.5 min-w-0">
           {priorityIconNode}
           <p className="text-caption text-muted-foreground truncate">{issue.identifier}</p>
+          {issue.archived_at && (
+            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-micro font-medium text-muted-foreground">
+              {t(($) => $.filters.archived_badge)}
+            </span>
+          )}
         </div>
         <IssueAgentActivityIndicator issueId={issue.id} />
       </div>

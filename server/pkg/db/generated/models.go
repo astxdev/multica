@@ -651,6 +651,8 @@ type Issue struct {
 	Metadata           []byte             `json:"metadata"`
 	Stage              pgtype.Int4        `json:"stage"`
 	Properties         []byte             `json:"properties"`
+	ArchivedAt         pgtype.Timestamptz `json:"archived_at"`
+	ArchivedBy         pgtype.UUID        `json:"archived_by"`
 }
 
 type IssueDependency struct {
