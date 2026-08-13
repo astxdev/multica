@@ -1006,6 +1006,52 @@ export interface DashboardFailureByAgent {
   task_count: number;
 }
 
+// Per-(project, model) token totals for the workspace overview. Same wire
+// shape as DashboardUsageByAgent, grouped by project_id instead of agent_id.
+// No project_id filter param exists on the endpoint that returns this —
+// scoping a per-project breakdown to one project would defeat its purpose.
+export interface DashboardUsageByProject {
+  project_id: string;
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  cost_usd_ticks?: number;
+  uncosted_input_tokens?: number;
+  uncosted_output_tokens?: number;
+  uncosted_cache_read_tokens?: number;
+  uncosted_cache_write_tokens?: number;
+  task_count: number;
+}
+
+// Per-project total terminal-task run-time + counts. Powers the overview's
+// "usage by project" panel alongside DashboardUsageByProject.
+export interface DashboardProjectRunTime {
+  project_id: string;
+  total_seconds: number;
+  task_count: number;
+  failed_count: number;
+  cancelled_count: number;
+}
+
+// One open issue past its due date, for the workspace overview's "overdue
+// tasks" panel. project_id/project_title are empty strings when the issue
+// has no project.
+export interface DashboardOverdueIssue {
+  id: string;
+  number: number;
+  title: string;
+  status: string;
+  priority: string;
+  assignee_type: string;
+  assignee_id: string;
+  due_date: string;
+  project_id: string;
+  project_title: string;
+}
+
 export type RuntimeUpdateStatus =
   | "pending"
   | "running"

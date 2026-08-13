@@ -1224,6 +1224,79 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 	return items, nil
 }
 
+const listOverdueIssues = `-- name: ListOverdueIssues :many
+SELECT i.id, i.number, i.title, i.status, i.priority, i.assignee_type,
+       i.assignee_id, i.due_date, i.project_id, p.title AS project_title
+FROM issue i
+LEFT JOIN project p ON p.id = i.project_id
+WHERE i.workspace_id = $1
+  AND i.status NOT IN ('done', 'cancelled')
+  AND i.due_date IS NOT NULL
+  AND i.due_date < CURRENT_DATE
+ORDER BY i.due_date ASC
+LIMIT $2
+`
+
+type ListOverdueIssuesParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Limit       int32       `json:"limit"`
+}
+
+type ListOverdueIssuesRow struct {
+	ID           pgtype.UUID `json:"id"`
+	Number       int32       `json:"number"`
+	Title        string      `json:"title"`
+	Status       string      `json:"status"`
+	Priority     string      `json:"priority"`
+	AssigneeType pgtype.Text `json:"assignee_type"`
+	AssigneeID   pgtype.UUID `json:"assignee_id"`
+	DueDate      pgtype.Date `json:"due_date"`
+	ProjectID    pgtype.UUID `json:"project_id"`
+	ProjectTitle pgtype.Text `json:"project_title"`
+}
+
+// Workspace-wide open issues past their due date, most overdue first — powers
+// the workspace overview's "overdue tasks" panel. project_title is nullable
+// since an issue can have no project.
+//
+// due_date is a calendar DATE with no time-of-day or timezone (migration
+// 112), so "overdue" compares against CURRENT_DATE rather than now(): a
+// timestamptz comparison would implicitly cast due_date to midnight in the
+// session tz, drifting the cutoff by up to a day depending on server tz.
+//
+// LIMIT is caller-supplied rather than a fixed constant so the handler can
+// cap the panel independently of any future page/export use of this query.
+func (q *Queries) ListOverdueIssues(ctx context.Context, arg ListOverdueIssuesParams) ([]ListOverdueIssuesRow, error) {
+	rows, err := q.db.Query(ctx, listOverdueIssues, arg.WorkspaceID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOverdueIssuesRow{}
+	for rows.Next() {
+		var i ListOverdueIssuesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.Title,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.DueDate,
+			&i.ProjectID,
+			&i.ProjectTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockIssueDuplicateKey = `-- name: LockIssueDuplicateKey :exec
 SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
 `

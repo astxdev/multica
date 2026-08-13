@@ -72,6 +72,9 @@ import type {
   DashboardRunTimeDaily,
   DashboardFailureDaily,
   DashboardFailureByAgent,
+  DashboardUsageByProject,
+  DashboardProjectRunTime,
+  DashboardOverdueIssue,
   RuntimeUpdate,
   RuntimeModelListRequest,
   RuntimeLocalSkillListRequest,
@@ -221,6 +224,9 @@ import {
   DashboardFailureByAgentListSchema,
   DashboardUsageByAgentListSchema,
   DashboardUsageDailyListSchema,
+  DashboardUsageByProjectListSchema,
+  DashboardProjectRunTimeListSchema,
+  DashboardOverdueIssueListSchema,
   EMPTY_APP_CONFIG,
   EMPTY_ATTACHMENT,
   EMPTY_CHAT_MESSAGE_LIST,
@@ -1823,6 +1829,52 @@ export class ApiClient {
       DashboardFailureByAgentListSchema,
       [],
       { endpoint: "GET /api/dashboard/failures/by-agent" },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Workspace overview — project-grouped counterparts of the by-agent
+  // rollups above, plus the overdue-issues panel. No `project_id` filter:
+  // scoping a per-project breakdown to one project would defeat its purpose.
+  // ---------------------------------------------------------------------------
+
+  async getDashboardUsageByProject(
+    params: { days?: number; tz?: string },
+  ): Promise<DashboardUsageByProject[]> {
+    const search = new URLSearchParams();
+    if (params.days) search.set("days", String(params.days));
+    if (params.tz) search.set("tz", params.tz);
+    const raw = await this.fetch<unknown>(`/api/dashboard/usage/by-project?${search}`);
+    return parseWithFallback<DashboardUsageByProject[]>(
+      raw,
+      DashboardUsageByProjectListSchema,
+      [],
+      { endpoint: "GET /api/dashboard/usage/by-project" },
+    );
+  }
+
+  async getDashboardRunTimeByProject(
+    params: { days?: number; tz?: string },
+  ): Promise<DashboardProjectRunTime[]> {
+    const search = new URLSearchParams();
+    if (params.days) search.set("days", String(params.days));
+    if (params.tz) search.set("tz", params.tz);
+    const raw = await this.fetch<unknown>(`/api/dashboard/project-runtime?${search}`);
+    return parseWithFallback<DashboardProjectRunTime[]>(
+      raw,
+      DashboardProjectRunTimeListSchema,
+      [],
+      { endpoint: "GET /api/dashboard/project-runtime" },
+    );
+  }
+
+  async getDashboardOverdueIssues(): Promise<DashboardOverdueIssue[]> {
+    const raw = await this.fetch<unknown>("/api/dashboard/overdue-issues");
+    return parseWithFallback<DashboardOverdueIssue[]>(
+      raw,
+      DashboardOverdueIssueListSchema,
+      [],
+      { endpoint: "GET /api/dashboard/overdue-issues" },
     );
   }
 

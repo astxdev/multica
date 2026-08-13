@@ -140,6 +140,36 @@ WHERE workspace_id = $1
 GROUP BY agent_id, LOWER(provider), model
 ORDER BY agent_id, LOWER(provider), model;
 
+-- name: ListDashboardUsageByProject :many
+-- Per-(project, provider, model) token aggregates from `task_usage_hourly`,
+-- powering the workspace overview's "usage by project" panel. Same shape as
+-- ListDashboardUsageByAgent, grouped by project_id instead of agent_id.
+--
+-- project_id IS NOT NULL excludes the no-project bucket (tasks on issues
+-- with no project, or issues deleted before the task finished) — the panel
+-- only lists real projects, matching the partial index
+-- idx_task_usage_hourly_workspace_project_time.
+SELECT
+    project_id,
+    LOWER(provider) AS provider,
+    model,
+    SUM(input_tokens)::bigint        AS input_tokens,
+    SUM(output_tokens)::bigint       AS output_tokens,
+    SUM(cache_read_tokens)::bigint   AS cache_read_tokens,
+    SUM(cache_write_tokens)::bigint  AS cache_write_tokens,
+    SUM(cost_usd_ticks)::bigint                                          AS cost_usd_ticks,
+    SUM(COALESCE(uncosted_input_tokens, input_tokens))::bigint           AS uncosted_input_tokens,
+    SUM(COALESCE(uncosted_output_tokens, output_tokens))::bigint         AS uncosted_output_tokens,
+    SUM(COALESCE(uncosted_cache_read_tokens, cache_read_tokens))::bigint AS uncosted_cache_read_tokens,
+    SUM(COALESCE(uncosted_cache_write_tokens, cache_write_tokens))::bigint AS uncosted_cache_write_tokens,
+    SUM(task_count)::int             AS task_count
+FROM task_usage_hourly
+WHERE workspace_id = $1
+  AND project_id IS NOT NULL
+  AND bucket_hour >= @since::timestamptz
+GROUP BY project_id, LOWER(provider), model
+ORDER BY project_id, LOWER(provider), model;
+
 -- name: ListDashboardRunTimeDaily :many
 -- Daily per-date run time + task counts for the workspace, optionally
 -- scoped to a single project. Powers the workspace dashboard's "Time"
@@ -216,6 +246,36 @@ WHERE a.workspace_id = $1
   AND atq.completed_at >= @since::timestamptz
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
 GROUP BY atq.agent_id
+ORDER BY total_seconds DESC;
+
+-- name: ListDashboardRunTimeByProject :many
+-- Per-project total task run time and task count for the workspace, powering
+-- the overview's "usage by project" panel alongside ListDashboardUsageByProject.
+-- Same terminal-run and completed_at-anchored semantics as
+-- ListDashboardAgentRunTime; see that query for why.
+--
+-- INNER JOIN issue (not LEFT, unlike the by-agent queries) because a task
+-- with no issue has no project to group by and must not contribute to any
+-- project's total.
+SELECT
+    i.project_id,
+    COALESCE(
+        SUM(EXTRACT(EPOCH FROM (atq.completed_at - atq.started_at)))::bigint,
+        0
+    )::bigint AS total_seconds,
+    COUNT(*)::int AS task_count,
+    COUNT(*) FILTER (WHERE atq.status = 'failed')::int AS failed_count,
+    COUNT(*) FILTER (WHERE atq.status = 'cancelled')::int AS cancelled_count
+FROM agent_task_queue atq
+JOIN agent a ON a.id = atq.agent_id
+JOIN issue i ON i.id = atq.issue_id
+WHERE a.workspace_id = $1
+  AND i.project_id IS NOT NULL
+  AND atq.status IN ('completed', 'failed', 'cancelled')
+  AND atq.started_at IS NOT NULL
+  AND atq.completed_at IS NOT NULL
+  AND atq.completed_at >= @since::timestamptz
+GROUP BY i.project_id
 ORDER BY total_seconds DESC;
 
 -- name: ListDashboardFailuresDaily :many

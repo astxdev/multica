@@ -1,0 +1,26 @@
+{
+  "title": "개요",
+  "status": {
+    "title": "프로젝트 상태 분포",
+    "no_data": "아직 프로젝트가 없습니다."
+  },
+  "usage": {
+    "title": "프로젝트별 사용량 · {{days}}일",
+    "header_project": "프로젝트",
+    "header_hours": "시간",
+    "header_tasks": "작업 수",
+    "header_tokens": "토큰",
+    "header_cost": "비용",
+    "no_data": "이 기간에는 에이전트 활동이 없습니다."
+  },
+  "overdue": {
+    "title": "기한 초과 작업",
+    "count_label": "{{count}}건 초과",
+    "header_task": "작업",
+    "header_project": "프로젝트",
+    "header_due": "마감일",
+    "days_overdue": "{{count}}일 초과",
+    "no_project": "프로젝트 없음",
+    "no_data": "기한 초과 작업이 없습니다. 잘하고 있어요."
+  }
+}

@@ -1140,6 +1140,51 @@ export const DashboardFailureByAgentListSchema = z.array(
   DashboardFailureByAgentSchema,
 );
 
+const DashboardUsageByProjectSchema = z.object({
+  project_id: z.string().default(""),
+  provider: z.string().default(""),
+  model: z.string().default(""),
+  input_tokens: z.number().default(0),
+  output_tokens: z.number().default(0),
+  cache_read_tokens: z.number().default(0),
+  cache_write_tokens: z.number().default(0),
+  ...CostSplitShape,
+  task_count: z.number().default(0),
+}).loose();
+
+export const DashboardUsageByProjectListSchema = z.array(
+  DashboardUsageByProjectSchema,
+);
+
+const DashboardProjectRunTimeSchema = z.object({
+  project_id: z.string().default(""),
+  total_seconds: z.number().default(0),
+  task_count: z.number().default(0),
+  failed_count: z.number().default(0),
+  cancelled_count: z.number().default(0),
+}).loose();
+
+export const DashboardProjectRunTimeListSchema = z.array(
+  DashboardProjectRunTimeSchema,
+);
+
+const DashboardOverdueIssueSchema = z.object({
+  id: z.string().default(""),
+  number: z.number().default(0),
+  title: z.string().default(""),
+  status: z.string().default(""),
+  priority: z.string().default(""),
+  assignee_type: z.string().default(""),
+  assignee_id: z.string().default(""),
+  due_date: z.string().default(""),
+  project_id: z.string().default(""),
+  project_title: z.string().default(""),
+}).loose();
+
+export const DashboardOverdueIssueListSchema = z.array(
+  DashboardOverdueIssueSchema,
+);
+
 // ---------------------------------------------------------------------------
 // Runtime usage schemas — the runtime-detail page's four usage endpoints
 // (`/api/runtimes/:id/usage*`). Same leniency rules as the dashboard

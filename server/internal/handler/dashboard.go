@@ -12,18 +12,25 @@ import (
 // ---------------------------------------------------------------------------
 // Workspace / Project dashboard
 //
-// Six read endpoints power the workspace dashboard:
+// Nine read endpoints power the workspace dashboard:
 //
-//   GET /api/dashboard/usage/daily        per-(date, model) token rows
-//   GET /api/dashboard/usage/by-agent     per-(agent, model) token rows
-//   GET /api/dashboard/agent-runtime      per-agent run-time + task counts
-//   GET /api/dashboard/runtime/daily      per-date run-time + task counts
-//   GET /api/dashboard/failures/daily     per-(date, failure_reason) counts
-//   GET /api/dashboard/failures/by-agent  per-(agent, failure_reason) counts
+//   GET /api/dashboard/usage/daily         per-(date, model) token rows
+//   GET /api/dashboard/usage/by-agent      per-(agent, model) token rows
+//   GET /api/dashboard/usage/by-project    per-(project, model) token rows
+//   GET /api/dashboard/agent-runtime       per-agent run-time + task counts
+//   GET /api/dashboard/project-runtime     per-project run-time + task counts
+//   GET /api/dashboard/runtime/daily       per-date run-time + task counts
+//   GET /api/dashboard/failures/daily      per-(date, failure_reason) counts
+//   GET /api/dashboard/failures/by-agent   per-(agent, failure_reason) counts
+//   GET /api/dashboard/overdue-issues      open issues past due, most overdue first
 //
-// All of them accept ?days=N (defaults to 30, capped at 365) and an optional
-// ?project_id=<uuid> to scope the rollup to a single project. With no
-// project_id the data spans the whole workspace.
+// The first eight accept ?days=N (defaults to 30, capped at 365); the six
+// original ones also accept an optional ?project_id=<uuid> to scope the
+// rollup to a single project (with no project_id the data spans the whole
+// workspace). The two "by-project" endpoints intentionally have no
+// project_id filter — scoping the per-project breakdown to one project would
+// defeat its purpose. overdue-issues takes no query params: it is a
+// workspace-wide, unbounded-window list capped at maxOverdueIssues rows.
 //
 // Cutoff convention: the three date-bucketed series use parseSinceParamInTZ
 // (N+1 calendar days, the surplus day trimmed client-side with `-(days-1)`),
@@ -501,6 +508,176 @@ func (h *Handler) GetDashboardRunTimeDaily(w http.ResponseWriter, r *http.Reques
 			TaskCount:      row.TaskCount,
 			FailedCount:    row.FailedCount,
 			CancelledCount: row.CancelledCount,
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// DashboardUsageByProjectResponse is one (project, provider, model) row,
+// the project-grouped counterpart of DashboardUsageByAgentResponse. Carries
+// no agent dimension, so it needs no restricted-agent folding: a private
+// agent's usage still contributes to its project's total, it is just not
+// attributable to that agent from this response.
+type DashboardUsageByProjectResponse struct {
+	ProjectID        string `json:"project_id"`
+	Provider         string `json:"provider"`
+	Model            string `json:"model"`
+	InputTokens      int64  `json:"input_tokens"`
+	OutputTokens     int64  `json:"output_tokens"`
+	CacheReadTokens  int64  `json:"cache_read_tokens"`
+	CacheWriteTokens int64  `json:"cache_write_tokens"`
+	// See DashboardUsageByAgentResponse for the authoritative/uncosted split.
+	CostUSDTicks             int64 `json:"cost_usd_ticks"`
+	UncostedInputTokens      int64 `json:"uncosted_input_tokens"`
+	UncostedOutputTokens     int64 `json:"uncosted_output_tokens"`
+	UncostedCacheReadTokens  int64 `json:"uncosted_cache_read_tokens"`
+	UncostedCacheWriteTokens int64 `json:"uncosted_cache_write_tokens"`
+	TaskCount                int32 `json:"task_count"`
+}
+
+// GetDashboardUsageByProject returns per-(project, provider, model) token
+// aggregates for the workspace — the workspace overview's "usage by
+// project" panel. Unlike the per-agent endpoints this has no ?project_id
+// filter: scoping to one project would defeat the point of a per-project
+// breakdown.
+func (h *Handler) GetDashboardUsageByProject(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
+		return
+	}
+	// Same exact-N-day cutoff as the by-agent endpoint: this response carries
+	// no date, so it cannot be trimmed client-side the way the daily series can.
+	tz := h.resolveViewingTZ(r)
+	since := parseExactSinceParamInTZ(r, 30, tz)
+
+	rows, err := h.Queries.ListDashboardUsageByProject(r.Context(), db.ListDashboardUsageByProjectParams{
+		WorkspaceID: parseUUID(workspaceID),
+		Since:       since,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list usage by project")
+		return
+	}
+
+	resp := make([]DashboardUsageByProjectResponse, len(rows))
+	for i, row := range rows {
+		resp[i] = DashboardUsageByProjectResponse{
+			ProjectID:                uuidToString(row.ProjectID),
+			Provider:                 row.Provider,
+			Model:                    row.Model,
+			InputTokens:              row.InputTokens,
+			OutputTokens:             row.OutputTokens,
+			CacheReadTokens:          row.CacheReadTokens,
+			CacheWriteTokens:         row.CacheWriteTokens,
+			CostUSDTicks:             row.CostUsdTicks,
+			UncostedInputTokens:      row.UncostedInputTokens,
+			UncostedOutputTokens:     row.UncostedOutputTokens,
+			UncostedCacheReadTokens:  row.UncostedCacheReadTokens,
+			UncostedCacheWriteTokens: row.UncostedCacheWriteTokens,
+			TaskCount:                row.TaskCount,
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// DashboardProjectRunTimeResponse is one project's total terminal-task run
+// time over the window, the project-grouped counterpart of
+// DashboardAgentRunTimeResponse.
+type DashboardProjectRunTimeResponse struct {
+	ProjectID      string `json:"project_id"`
+	TotalSeconds   int64  `json:"total_seconds"`
+	TaskCount      int32  `json:"task_count"`
+	FailedCount    int32  `json:"failed_count"`
+	CancelledCount int32  `json:"cancelled_count"`
+}
+
+// GetDashboardRunTimeByProject returns per-project total task run time
+// (seconds) and task counts for the workspace — the run-time half of the
+// overview's "usage by project" panel, paired with GetDashboardUsageByProject.
+func (h *Handler) GetDashboardRunTimeByProject(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
+		return
+	}
+	tz := h.resolveViewingTZ(r)
+	since := parseExactSinceParamInTZ(r, 30, tz)
+
+	rows, err := h.Queries.ListDashboardRunTimeByProject(r.Context(), db.ListDashboardRunTimeByProjectParams{
+		WorkspaceID: parseUUID(workspaceID),
+		Since:       since,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list project runtime")
+		return
+	}
+
+	resp := make([]DashboardProjectRunTimeResponse, len(rows))
+	for i, row := range rows {
+		resp[i] = DashboardProjectRunTimeResponse{
+			ProjectID:      uuidToString(row.ProjectID),
+			TotalSeconds:   row.TotalSeconds,
+			TaskCount:      row.TaskCount,
+			FailedCount:    row.FailedCount,
+			CancelledCount: row.CancelledCount,
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// maxOverdueIssues caps the overview's overdue-tasks panel. A workspace that
+// somehow accumulates more than this many overdue issues needs the full
+// issues list with filters, not a dashboard panel.
+const maxOverdueIssues = 50
+
+// DashboardOverdueIssueResponse is one overdue issue, most overdue first.
+// ProjectID/ProjectTitle are empty when the issue has no project.
+type DashboardOverdueIssueResponse struct {
+	ID           string `json:"id"`
+	Number       int32  `json:"number"`
+	Title        string `json:"title"`
+	Status       string `json:"status"`
+	Priority     string `json:"priority"`
+	AssigneeType string `json:"assignee_type"`
+	AssigneeID   string `json:"assignee_id"`
+	DueDate      string `json:"due_date"`
+	ProjectID    string `json:"project_id"`
+	ProjectTitle string `json:"project_title"`
+}
+
+// GetDashboardOverdueIssues returns the workspace's open issues past their
+// due date, most overdue first, for the overview's "overdue tasks" panel.
+func (h *Handler) GetDashboardOverdueIssues(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
+		return
+	}
+
+	rows, err := h.Queries.ListOverdueIssues(r.Context(), db.ListOverdueIssuesParams{
+		WorkspaceID: parseUUID(workspaceID),
+		Limit:       maxOverdueIssues,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list overdue issues")
+		return
+	}
+
+	resp := make([]DashboardOverdueIssueResponse, len(rows))
+	for i, row := range rows {
+		resp[i] = DashboardOverdueIssueResponse{
+			ID:           uuidToString(row.ID),
+			Number:       row.Number,
+			Title:        row.Title,
+			Status:       row.Status,
+			Priority:     row.Priority,
+			AssigneeType: row.AssigneeType.String,
+			DueDate:      row.DueDate.Time.Format("2006-01-02"),
+			ProjectTitle: row.ProjectTitle.String,
+		}
+		if row.AssigneeID.Valid {
+			resp[i].AssigneeID = uuidToString(row.AssigneeID)
+		}
+		if row.ProjectID.Valid {
+			resp[i].ProjectID = uuidToString(row.ProjectID)
 		}
 	}
 	writeJSON(w, http.StatusOK, resp)

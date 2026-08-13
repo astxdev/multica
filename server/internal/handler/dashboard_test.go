@@ -125,6 +125,16 @@ func TestDashboardEndpoints(t *testing.T) {
 		TotalSeconds int64  `json:"total_seconds"`
 		TaskCount    int32  `json:"task_count"`
 	}
+	type byProjectRow struct {
+		ProjectID   string `json:"project_id"`
+		Model       string `json:"model"`
+		InputTokens int64  `json:"input_tokens"`
+	}
+	type projectRuntimeRow struct {
+		ProjectID    string `json:"project_id"`
+		TotalSeconds int64  `json:"total_seconds"`
+		TaskCount    int32  `json:"task_count"`
+	}
 
 	// daily — workspace-wide
 	{
@@ -245,6 +255,128 @@ func TestDashboardEndpoints(t *testing.T) {
 		if aTotal < 1500 {
 			t.Errorf("by-agent ws: expected >=1500 tokens across workspace, got %d", aTotal)
 		}
+	}
+
+	// usage-by-project — no project_id filter param exists; the response
+	// itself is grouped by project, so isolate our fixture project's row.
+	{
+		w := httptest.NewRecorder()
+		testHandler.GetDashboardUsageByProject(w, newRequest("GET", "/api/dashboard/usage/by-project?days=1", nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("usage-by-project: expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var rows []byProjectRow
+		_ = json.NewDecoder(w.Body).Decode(&rows)
+		var total int64
+		for _, r := range rows {
+			if r.ProjectID == projectID && r.Model == "claude-3-5-sonnet" {
+				total += r.InputTokens
+			}
+		}
+		if total < 1000 {
+			t.Errorf("usage-by-project: expected >=1000 tokens for project, got %d", total)
+		}
+	}
+
+	// project-runtime
+	{
+		w := httptest.NewRecorder()
+		testHandler.GetDashboardRunTimeByProject(w, newRequest("GET", "/api/dashboard/project-runtime?days=1", nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("project-runtime: expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var rows []projectRuntimeRow
+		_ = json.NewDecoder(w.Body).Decode(&rows)
+		var seconds int64
+		var tasks int32
+		for _, r := range rows {
+			if r.ProjectID == projectID {
+				seconds += r.TotalSeconds
+				tasks += r.TaskCount
+			}
+		}
+		if tasks < 1 {
+			t.Errorf("project-runtime: expected >=1 task for project, got %d", tasks)
+		}
+		if seconds < 600 {
+			t.Errorf("project-runtime: expected >=600s (one 10-minute run), got %d", seconds)
+		}
+	}
+}
+
+// TestDashboardOverdueIssues covers the overview's overdue-tasks panel: an
+// open issue past its due date is returned, most overdue first, while a
+// future-due issue and a done-but-overdue issue are both excluded.
+func TestDashboardOverdueIssues(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+
+	var projectID string
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO project (workspace_id, title)
+		VALUES ($1, 'overdue test project')
+		RETURNING id
+	`, testWorkspaceID).Scan(&projectID); err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM project WHERE id = $1`, projectID) })
+
+	mkIssue := func(title string, dueDate string, status string) string {
+		var id string
+		if err := testPool.QueryRow(ctx, `
+			INSERT INTO issue (workspace_id, title, creator_id, creator_type, project_id, status, due_date, number)
+			VALUES (
+				$1, $2, $3, 'member', $4, $5, $6::date,
+				(SELECT COALESCE(MAX(number), 0) + 1 FROM issue WHERE workspace_id = $1)
+			)
+			RETURNING id
+		`, testWorkspaceID, title, testUserID, projectID, status, dueDate).Scan(&id); err != nil {
+			t.Fatalf("insert issue: %v", err)
+		}
+		t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, id) })
+		return id
+	}
+
+	overdueID := mkIssue("overdue and open", "2000-01-01", "todo")
+	mkIssue("due in the future", "2999-01-01", "todo")
+	mkIssue("overdue but done", "2000-01-01", "done")
+
+	w := httptest.NewRecorder()
+	testHandler.GetDashboardOverdueIssues(w, newRequest("GET", "/api/dashboard/overdue-issues", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("overdue-issues: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var rows []DashboardOverdueIssueResponse
+	if err := json.NewDecoder(w.Body).Decode(&rows); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	var found *DashboardOverdueIssueResponse
+	for i := range rows {
+		if rows[i].ID == overdueID {
+			found = &rows[i]
+		}
+		if rows[i].Title == "due in the future" {
+			t.Errorf("overdue-issues: future-due issue must not be listed, got %+v", rows[i])
+		}
+		if rows[i].Title == "overdue but done" {
+			t.Errorf("overdue-issues: done issue must not be listed, got %+v", rows[i])
+		}
+	}
+	if found == nil {
+		t.Fatalf("overdue-issues: expected overdue issue %s in response, got %v", overdueID, rows)
+	}
+	if found.ProjectID != projectID {
+		t.Errorf("overdue-issues: expected project_id %s, got %s", projectID, found.ProjectID)
+	}
+	if found.ProjectTitle != "overdue test project" {
+		t.Errorf("overdue-issues: expected project_title, got %q", found.ProjectTitle)
+	}
+	if found.DueDate != "2000-01-01" {
+		t.Errorf("overdue-issues: expected due_date 2000-01-01, got %q", found.DueDate)
 	}
 }
 

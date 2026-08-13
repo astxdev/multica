@@ -299,6 +299,29 @@ WHERE i.workspace_id = $1
   )
 ORDER BY i.position ASC, i.created_at DESC;
 
+-- name: ListOverdueIssues :many
+-- Workspace-wide open issues past their due date, most overdue first — powers
+-- the workspace overview's "overdue tasks" panel. project_title is nullable
+-- since an issue can have no project.
+--
+-- due_date is a calendar DATE with no time-of-day or timezone (migration
+-- 112), so "overdue" compares against CURRENT_DATE rather than now(): a
+-- timestamptz comparison would implicitly cast due_date to midnight in the
+-- session tz, drifting the cutoff by up to a day depending on server tz.
+--
+-- LIMIT is caller-supplied rather than a fixed constant so the handler can
+-- cap the panel independently of any future page/export use of this query.
+SELECT i.id, i.number, i.title, i.status, i.priority, i.assignee_type,
+       i.assignee_id, i.due_date, i.project_id, p.title AS project_title
+FROM issue i
+LEFT JOIN project p ON p.id = i.project_id
+WHERE i.workspace_id = $1
+  AND i.status NOT IN ('done', 'cancelled')
+  AND i.due_date IS NOT NULL
+  AND i.due_date < CURRENT_DATE
+ORDER BY i.due_date ASC
+LIMIT $2;
+
 -- name: CountIssues :one
 -- See ListIssues for the semantics of involves_user_id.
 SELECT count(*) FROM issue i

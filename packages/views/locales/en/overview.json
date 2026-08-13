@@ -1,0 +1,26 @@
+{
+  "title": "Overview",
+  "status": {
+    "title": "Projects by status",
+    "no_data": "No projects yet."
+  },
+  "usage": {
+    "title": "Usage by project · {{days}}D",
+    "header_project": "Project",
+    "header_hours": "Hours",
+    "header_tasks": "Tasks",
+    "header_tokens": "Tokens",
+    "header_cost": "Cost",
+    "no_data": "No agent activity in this window."
+  },
+  "overdue": {
+    "title": "Overdue tasks",
+    "count_label": "{{count}} overdue",
+    "header_task": "Task",
+    "header_project": "Project",
+    "header_due": "Due",
+    "days_overdue": "{{count}}d overdue",
+    "no_project": "No project",
+    "no_data": "Nothing overdue. Nice work."
+  }
+}

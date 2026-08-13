@@ -1,0 +1,26 @@
+{
+  "title": "概要",
+  "status": {
+    "title": "プロジェクトのステータス内訳",
+    "no_data": "プロジェクトはまだありません。"
+  },
+  "usage": {
+    "title": "プロジェクト別の使用量 · {{days}}日",
+    "header_project": "プロジェクト",
+    "header_hours": "時間",
+    "header_tasks": "作業数",
+    "header_tokens": "トークン",
+    "header_cost": "コスト",
+    "no_data": "この期間のエージェント活動はありません。"
+  },
+  "overdue": {
+    "title": "期限超過タスク",
+    "count_label": "{{count}} 件超過",
+    "header_task": "タスク",
+    "header_project": "プロジェクト",
+    "header_due": "期限",
+    "days_overdue": "{{count}}日超過",
+    "no_project": "プロジェクトなし",
+    "no_data": "期限超過はありません。順調です。"
+  }
+}

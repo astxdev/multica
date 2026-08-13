@@ -1,0 +1,26 @@
+{
+  "title": "总览",
+  "status": {
+    "title": "项目状态分布",
+    "no_data": "暂无项目。"
+  },
+  "usage": {
+    "title": "按项目统计用量 · {{days}}天",
+    "header_project": "项目",
+    "header_hours": "时长",
+    "header_tasks": "task 数",
+    "header_tokens": "Token",
+    "header_cost": "费用",
+    "no_data": "所选时间范围内暂无智能体活动。"
+  },
+  "overdue": {
+    "title": "已逾期任务",
+    "count_label": "{{count}} 项逾期",
+    "header_task": "任务",
+    "header_project": "项目",
+    "header_due": "截止日期",
+    "days_overdue": "逾期 {{count}} 天",
+    "no_project": "无项目",
+    "no_data": "没有逾期任务，进展顺利。"
+  }
+}

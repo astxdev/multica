@@ -40,6 +40,13 @@ export const dashboardKeys = {
     tz: string,
   ) =>
     [...dashboardKeys.all(wsId), "failures-by-agent", days, projectId, tz] as const,
+  // No projectId dimension: these are workspace-wide, grouped BY project.
+  usageByProject: (wsId: string, days: number, tz: string) =>
+    [...dashboardKeys.all(wsId), "usage-by-project", days, tz] as const,
+  runTimeByProject: (wsId: string, days: number, tz: string) =>
+    [...dashboardKeys.all(wsId), "runtime-by-project", days, tz] as const,
+  overdueIssues: (wsId: string) =>
+    [...dashboardKeys.all(wsId), "overdue-issues"] as const,
 };
 
 // The server materializes these rollups on a 5-minute cadence, so a mounted
@@ -190,6 +197,60 @@ export function dashboardFailuresDailyOptions(
       isSameDashboardScope(previousQuery?.queryKey, queryKey)
         ? keepPreviousData(previousData)
         : undefined,
+  });
+}
+
+// Project-grouped counterparts of dashboardUsageByAgentOptions /
+// dashboardAgentRunTimeOptions, powering the workspace overview's
+// "usage by project" panel. No projectId parameter: the endpoint groups
+// by every project at once.
+export function dashboardUsageByProjectOptions(
+  wsId: string,
+  days: number,
+  tz: string,
+) {
+  const queryKey = dashboardKeys.usageByProject(wsId, days, tz);
+  return queryOptions({
+    queryKey,
+    queryFn: () => api.getDashboardUsageByProject({ days, tz }),
+    enabled: !!wsId,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
+    placeholderData: (previousData, previousQuery) =>
+      isSameDashboardScope(previousQuery?.queryKey, queryKey)
+        ? keepPreviousData(previousData)
+        : undefined,
+  });
+}
+
+export function dashboardRunTimeByProjectOptions(
+  wsId: string,
+  days: number,
+  tz: string,
+) {
+  const queryKey = dashboardKeys.runTimeByProject(wsId, days, tz);
+  return queryOptions({
+    queryKey,
+    queryFn: () => api.getDashboardRunTimeByProject({ days, tz }),
+    enabled: !!wsId,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
+    placeholderData: (previousData, previousQuery) =>
+      isSameDashboardScope(previousQuery?.queryKey, queryKey)
+        ? keepPreviousData(previousData)
+        : undefined,
+  });
+}
+
+// Overdue issues carry no `days`/`tz` scope — the backend returns every
+// open overdue issue up to its own cap, so no client-side range applies.
+export function dashboardOverdueIssuesOptions(wsId: string) {
+  return queryOptions({
+    queryKey: dashboardKeys.overdueIssues(wsId),
+    queryFn: () => api.getDashboardOverdueIssues(),
+    enabled: !!wsId,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
   });
 }
 
