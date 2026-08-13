@@ -146,6 +146,149 @@ func TestProjectResourceLifecycle(t *testing.T) {
 	}
 }
 
+func TestProjectResourceLinkLifecycle(t *testing.T) {
+	w := httptest.NewRecorder()
+	req := newRequest("POST", "/api/projects?workspace_id="+testWorkspaceID, map[string]any{
+		"title": "Link lifecycle project",
+	})
+	testHandler.CreateProject(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("CreateProject: %d %s", w.Code, w.Body.String())
+	}
+	var project ProjectResponse
+	if err := json.NewDecoder(w.Body).Decode(&project); err != nil {
+		t.Fatalf("decode CreateProject: %v", err)
+	}
+	defer func() {
+		r := newRequest("DELETE", "/api/projects/"+project.ID, nil)
+		r = withURLParam(r, "id", project.ID)
+		testHandler.DeleteProject(httptest.NewRecorder(), r)
+	}()
+
+	w = httptest.NewRecorder()
+	req = newRequest("POST", "/api/projects/"+project.ID+"/resources", map[string]any{
+		"resource_type": "link",
+		"resource_ref":  map[string]any{"url": "https://drive.google.com/drive/folders/abc"},
+		"label":         "Design assets",
+	})
+	req = withURLParam(req, "id", project.ID)
+	testHandler.CreateProjectResource(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("CreateProjectResource: expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var created ProjectResourceResponse
+	if err := json.NewDecoder(w.Body).Decode(&created); err != nil {
+		t.Fatalf("decode CreateProjectResource: %v", err)
+	}
+	if created.ResourceType != "link" {
+		t.Errorf("created.ResourceType = %q, want link", created.ResourceType)
+	}
+	if created.Label == nil || *created.Label != "Design assets" {
+		t.Errorf("created.Label = %v, want Design assets", created.Label)
+	}
+	var ref linkRef
+	if err := json.Unmarshal(created.ResourceRef, &ref); err != nil {
+		t.Fatalf("decode resource_ref: %v", err)
+	}
+	if ref.URL != "https://drive.google.com/drive/folders/abc" {
+		t.Errorf("created.ResourceRef.url = %q", ref.URL)
+	}
+
+	// Clearing the label on a link resource must be rejected.
+	w = httptest.NewRecorder()
+	req = newRequest("PUT", "/api/projects/"+project.ID+"/resources/"+created.ID, map[string]any{
+		"label": "",
+	})
+	req = withURLParams(req, "id", project.ID, "resourceId", created.ID)
+	testHandler.UpdateProjectResource(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("clearing link label: expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Renaming (non-empty label) must succeed.
+	w = httptest.NewRecorder()
+	req = newRequest("PUT", "/api/projects/"+project.ID+"/resources/"+created.ID, map[string]any{
+		"label": "Design assets (v2)",
+	})
+	req = withURLParams(req, "id", project.ID, "resourceId", created.ID)
+	testHandler.UpdateProjectResource(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("UpdateProjectResource rename: %d %s", w.Code, w.Body.String())
+	}
+	var updated ProjectResourceResponse
+	if err := json.NewDecoder(w.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode UpdateProjectResource: %v", err)
+	}
+	if updated.Label == nil || *updated.Label != "Design assets (v2)" {
+		t.Errorf("updated.Label = %v, want Design assets (v2)", updated.Label)
+	}
+}
+
+func TestProjectResourceLinkValidation(t *testing.T) {
+	w := httptest.NewRecorder()
+	req := newRequest("POST", "/api/projects?workspace_id="+testWorkspaceID, map[string]any{
+		"title": "Link validation project",
+	})
+	testHandler.CreateProject(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("CreateProject: %d %s", w.Code, w.Body.String())
+	}
+	var project ProjectResponse
+	if err := json.NewDecoder(w.Body).Decode(&project); err != nil {
+		t.Fatalf("decode CreateProject: %v", err)
+	}
+	defer func() {
+		r := newRequest("DELETE", "/api/projects/"+project.ID, nil)
+		r = withURLParam(r, "id", project.ID)
+		testHandler.DeleteProject(httptest.NewRecorder(), r)
+	}()
+
+	cases := []struct {
+		name  string
+		ref   any
+		label any
+	}{
+		{"missing url", map[string]any{}, "Docs"},
+		{"blank url", map[string]any{"url": "   "}, "Docs"},
+		{"non-http scheme", map[string]any{"url": "ftp://example.com/file"}, "Docs"},
+		{"javascript scheme", map[string]any{"url": "javascript:alert(1)"}, "Docs"},
+		{"malformed url", map[string]any{"url": "not-a-url"}, "Docs"},
+		{"missing label", map[string]any{"url": "https://drive.google.com/drive/folders/abc"}, nil},
+		{"blank label", map[string]any{"url": "https://drive.google.com/drive/folders/abc"}, "   "},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{
+				"resource_type": "link",
+				"resource_ref":  tc.ref,
+			}
+			if tc.label != nil {
+				body["label"] = tc.label
+			}
+			w := httptest.NewRecorder()
+			req := newRequest("POST", "/api/projects/"+project.ID+"/resources", body)
+			req = withURLParam(req, "id", project.ID)
+			testHandler.CreateProjectResource(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+		})
+	}
+
+	// Valid url + valid label must succeed.
+	w = httptest.NewRecorder()
+	req = newRequest("POST", "/api/projects/"+project.ID+"/resources", map[string]any{
+		"resource_type": "link",
+		"resource_ref":  map[string]any{"url": "https://notion.so/workspace/page-123"},
+		"label":         "Spec",
+	})
+	req = withURLParam(req, "id", project.ID)
+	testHandler.CreateProjectResource(w, req)
+	if w.Code != http.StatusCreated {
+		t.Errorf("valid link: expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 // TestProjectResourceAcceptsSSHRepoURLs covers GitHub issue #2484: SSH and
 // scp-like git URLs must be accepted alongside https URLs, because workspace
 // repos configured with an SSH remote previously got rejected when attached

@@ -76,6 +76,8 @@ func validateAndNormalizeResourceRef(resourceType string, ref json.RawMessage) (
 		return validateGithubRepoRef(ref)
 	case "local_directory":
 		return validateLocalDirectoryRef(ref)
+	case "link":
+		return validateLinkRef(ref)
 	default:
 		return nil, fmt.Errorf("unknown resource_type %q", resourceType)
 	}
@@ -101,6 +103,33 @@ func validateGithubRepoRef(ref json.RawMessage) (json.RawMessage, error) {
 	}
 	payload.DefaultBranchHint = strings.TrimSpace(payload.DefaultBranchHint)
 	payload.Ref = strings.TrimSpace(payload.Ref)
+	out, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// linkRef is the JSONB shape stored for resource_type=link — a generic
+// external URL (Google Drive, Notion, Figma, etc.). Unlike github_repo, no
+// ssh/scp form is accepted: this is a browser-opened link, not something the
+// daemon clones.
+type linkRef struct {
+	URL string `json:"url"`
+}
+
+func validateLinkRef(ref json.RawMessage) (json.RawMessage, error) {
+	var payload linkRef
+	if err := json.Unmarshal(ref, &payload); err != nil {
+		return nil, fmt.Errorf("invalid link payload: %w", err)
+	}
+	payload.URL = strings.TrimSpace(payload.URL)
+	if payload.URL == "" {
+		return nil, errors.New("link: url is required")
+	}
+	if !isValidHTTPURL(payload.URL) {
+		return nil, errors.New("link: url must be a valid http(s) URL")
+	}
 	out, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -213,6 +242,17 @@ func isValidGitRepoURL(s string) bool {
 	return true
 }
 
+// isValidHTTPURL requires an absolute http(s) URL with a host. Deliberately
+// narrower than isValidGitRepoURL — a link resource is opened in a browser
+// tab, not fed to git, so ssh/scp shorthand forms make no sense here.
+func isValidHTTPURL(s string) bool {
+	u, err := url.Parse(s)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
 // loadProjectForResource resolves the project, enforces workspace ownership,
 // and returns its DB row. Used by all project_resource handlers.
 func (h *Handler) loadProjectForResource(w http.ResponseWriter, r *http.Request, projectIDParam string) (db.Project, bool) {
@@ -275,6 +315,13 @@ func (h *Handler) CreateProjectResource(w http.ResponseWriter, r *http.Request) 
 	normalizedRef, err := validateAndNormalizeResourceRef(req.ResourceType, req.ResourceRef)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// link resources have no other identifying text (unlike github_repo's
+	// derived short name or local_directory's path), so a label is required
+	// at creation to keep the resource list distinguishable.
+	if req.ResourceType == "link" && (req.Label == nil || strings.TrimSpace(*req.Label) == "") {
+		writeError(w, http.StatusBadRequest, "link: label is required")
 		return
 	}
 
@@ -396,6 +443,10 @@ func (h *Handler) UpdateProjectResource(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if labelStr == nil || strings.TrimSpace(*labelStr) == "" {
+			if existing.ResourceType == "link" {
+				writeError(w, http.StatusBadRequest, "link: label is required")
+				return
+			}
 			nextLabel = pgtype.Text{}
 		} else {
 			nextLabel = pgtype.Text{String: strings.TrimSpace(*labelStr), Valid: true}

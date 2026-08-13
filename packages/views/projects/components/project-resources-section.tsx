@@ -6,6 +6,7 @@ import {
   ChevronRight,
   FolderGit,
   FolderOpen,
+  Link2,
   Pencil,
   Plus,
   Search,
@@ -22,6 +23,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import type {
   GithubRepoResourceRef,
+  LinkResourceRef,
   LocalDirectoryResourceRef,
   ProjectResource,
 } from "@multica/core/types";
@@ -62,6 +64,12 @@ function isLocalDirectoryRef(r: ProjectResource): r is ProjectResource & {
   resource_ref: LocalDirectoryResourceRef;
 } {
   return r.resource_type === "local_directory";
+}
+
+function isLinkRef(r: ProjectResource): r is ProjectResource & {
+  resource_ref: LinkResourceRef;
+} {
+  return r.resource_type === "link";
 }
 
 export function ProjectResourcesSection({ projectId }: { projectId: string }) {
@@ -118,6 +126,20 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
         resource_ref: { url },
       });
       toast.success(t(($) => $.resources.toast_attached));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t(($) => $.resources.toast_attach_failed);
+      toast.error(msg);
+    }
+  };
+
+  const handleAttachLink = async (label: string, url: string) => {
+    try {
+      await createResource.mutateAsync({
+        resource_type: "link",
+        resource_ref: { url },
+        label,
+      });
+      toast.success(t(($) => $.resources.toast_link_attached));
     } catch (err) {
       const msg = err instanceof Error ? err.message : t(($) => $.resources.toast_attach_failed);
       toast.error(msg);
@@ -349,6 +371,12 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
                   setAddOpen(false);
                 }}
               />
+              <AddLinkForm
+                onSubmit={async (label, url) => {
+                  await handleAttachLink(label, url);
+                  setAddOpen(false);
+                }}
+              />
             </PopoverContent>
           </Popover>
           {desktopMode && (
@@ -428,6 +456,39 @@ function ResourceRow({
             }
           />
           <TooltipContent side="top" className="whitespace-pre-line">{tooltip}</TooltipContent>
+        </Tooltip>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="opacity-0 group-hover:opacity-100 transition-opacity rounded-sm p-0.5 hover:bg-accent"
+          title={t(($) => $.resources.remove_tooltip)}
+        >
+          <Trash2 className="size-3 text-muted-foreground" />
+        </button>
+      </div>
+    );
+  }
+
+  if (isLinkRef(resource)) {
+    const ref = resource.resource_ref;
+    const display = resource.label ?? ref.url;
+    return (
+      <div className="flex items-center gap-2 text-caption group">
+        <Link2 className="size-3.5 text-muted-foreground shrink-0" />
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <a
+                href={ref.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate flex-1 hover:underline"
+              >
+                {display}
+              </a>
+            }
+          />
+          <TooltipContent side="top">{ref.url}</TooltipContent>
         </Tooltip>
         <button
           type="button"
@@ -623,6 +684,60 @@ function CustomRepoForm({
       >
         {t(($) => $.resources.url_submit)}
       </Button>
+    </form>
+  );
+}
+
+function AddLinkForm({
+  onSubmit,
+}: {
+  onSubmit: (label: string, url: string) => Promise<void> | void;
+}) {
+  const { t } = useT("projects");
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const handle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedLabel = label.trim();
+    const trimmedUrl = url.trim();
+    if (!trimmedLabel || !trimmedUrl) return;
+    setSubmitting(true);
+    try {
+      await onSubmit(trimmedLabel, trimmedUrl);
+      setLabel("");
+      setUrl("");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  return (
+    <form onSubmit={handle} className="flex flex-col gap-1.5 pt-1.5 border-t">
+      <input
+        type="text"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder={t(($) => $.resources.add_link_label_placeholder)}
+        className="bg-transparent text-caption px-2 py-1 outline-none placeholder:text-muted-foreground rounded-md border"
+      />
+      <div className="flex items-center gap-1.5">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={t(($) => $.resources.add_link_url_placeholder)}
+          className="flex-1 bg-transparent text-caption px-2 py-1 outline-none placeholder:text-muted-foreground"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-caption"
+          disabled={!label.trim() || !url.trim() || submitting}
+        >
+          {t(($) => $.resources.add_link_submit)}
+        </Button>
+      </div>
     </form>
   );
 }
