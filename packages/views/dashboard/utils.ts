@@ -16,8 +16,10 @@ import {
   estimateCost,
   estimateCostBreakdown,
   formatShortDate,
+  modelGroupingKey,
   todayIso,
   weekStartIso,
+  type CostByKey,
   type DailyTokenData,
 } from "../runtimes/utils";
 import type {
@@ -182,6 +184,29 @@ export function aggregateAgentTokens(rows: DashboardUsageByAgent[]): AgentCostRo
     map.set(r.agent_id, entry);
   }
   return Array.from(map.values()).toSorted((a, b) => b.cost - a.cost);
+}
+
+// Per-(agent, model) rows → per-model totals across every agent, discarding
+// the agent dimension. Mirrors `aggregateCostByModel` from the runtimes utils
+// (same fold, same `modelGroupingKey`), applied to the workspace-wide
+// per-agent rollup instead of one runtime's usage, so no extra request is
+// needed beyond what the leaderboard already fetches.
+//
+// Sorted by tokens desc, not cost: this feeds the "% of usage" card, where
+// the ranking question is which model gets called the most, not which one is
+// priced the highest.
+export function aggregateUsageByModel(rows: DashboardUsageByAgent[]): CostByKey[] {
+  const map = new Map<string, CostByKey>();
+  for (const r of rows) {
+    const key = modelGroupingKey(r.model, r.provider);
+    const entry = map.get(key) ?? { key, tokens: 0, cost: 0, taskCount: 0 };
+    entry.tokens +=
+      r.input_tokens + r.output_tokens + r.cache_read_tokens + r.cache_write_tokens;
+    entry.cost += estimateCost(r);
+    entry.taskCount += r.task_count;
+    map.set(key, entry);
+  }
+  return Array.from(map.values()).toSorted((a, b) => b.tokens - a.tokens);
 }
 
 export interface AgentDashboardRow {

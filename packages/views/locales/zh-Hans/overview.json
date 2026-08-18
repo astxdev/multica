@@ -13,6 +13,18 @@
     "header_cost": "费用",
     "no_data": "所选时间范围内暂无智能体活动。"
   },
+  "agents": {
+    "title": "智能体用量排行 · {{days}}天",
+    "view_all": "查看排行榜",
+    "no_data": "所选时间范围内暂无智能体活动。",
+    "deleted_agents": "已删除的智能体",
+    "other_agents": "其他智能体"
+  },
+  "models": {
+    "title": "按模型统计用量 · {{days}}天",
+    "no_data": "所选时间范围内暂无智能体活动。",
+    "other": "其他模型"
+  },
   "overdue": {
     "title": "已逾期任务",
     "count_label": "{{count}} 项逾期",

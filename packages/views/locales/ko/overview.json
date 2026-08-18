@@ -13,6 +13,18 @@
     "header_cost": "비용",
     "no_data": "이 기간에는 에이전트 활동이 없습니다."
   },
+  "agents": {
+    "title": "에이전트별 사용량 · {{days}}일",
+    "view_all": "리더보드 보기",
+    "no_data": "이 기간에는 에이전트 활동이 없습니다.",
+    "deleted_agents": "삭제된 에이전트",
+    "other_agents": "기타 에이전트"
+  },
+  "models": {
+    "title": "모델별 사용량 · {{days}}일",
+    "no_data": "이 기간에는 에이전트 활동이 없습니다.",
+    "other": "기타 모델"
+  },
   "overdue": {
     "title": "기한 초과 작업",
     "count_label": "{{count}}건 초과",

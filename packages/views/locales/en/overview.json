@@ -13,6 +13,18 @@
     "header_cost": "Cost",
     "no_data": "No agent activity in this window."
   },
+  "agents": {
+    "title": "Top agents by usage · {{days}}D",
+    "view_all": "View leaderboard",
+    "no_data": "No agent activity in this window.",
+    "deleted_agents": "Deleted agents",
+    "other_agents": "Other agents"
+  },
+  "models": {
+    "title": "Usage by model · {{days}}D",
+    "no_data": "No agent activity in this window.",
+    "other": "Other models"
+  },
   "overdue": {
     "title": "Overdue tasks",
     "count_label": "{{count}} overdue",

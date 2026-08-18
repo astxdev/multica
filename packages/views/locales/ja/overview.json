@@ -13,6 +13,18 @@
     "header_cost": "コスト",
     "no_data": "この期間のエージェント活動はありません。"
   },
+  "agents": {
+    "title": "エージェント別利用状況 · {{days}}日",
+    "view_all": "リーダーボードを見る",
+    "no_data": "この期間のエージェント活動はありません。",
+    "deleted_agents": "削除済みエージェント",
+    "other_agents": "その他のエージェント"
+  },
+  "models": {
+    "title": "モデル別利用状況 · {{days}}日",
+    "no_data": "この期間のエージェント活動はありません。",
+    "other": "その他のモデル"
+  },
   "overdue": {
     "title": "期限超過タスク",
     "count_label": "{{count}} 件超過",
