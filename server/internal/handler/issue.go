@@ -3895,3 +3895,69 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	slog.Info("batch delete issues", append(logger.RequestAttrs(r), "count", deleted)...)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": deleted})
 }
+
+type BatchArchiveIssuesRequest struct {
+	IssueIDs []string `json:"issue_ids"`
+}
+
+func (h *Handler) BatchArchiveIssues(w http.ResponseWriter, r *http.Request) {
+	var req BatchArchiveIssuesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if len(req.IssueIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "issue_ids is required")
+		return
+	}
+
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	workspaceID := h.resolveWorkspaceID(r)
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
+		return
+	}
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	archivedByUUID := parseUUID(userID)
+
+	archived := 0
+	for _, issueID := range req.IssueIDs {
+		issueUUID, err := util.ParseUUID(issueID)
+		if err != nil {
+			continue
+		}
+		issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID:          issueUUID,
+			WorkspaceID: wsUUID,
+		})
+		if err != nil {
+			continue
+		}
+		if issue.ArchivedAt.Valid {
+			continue
+		}
+
+		archivedIssue, err := h.Queries.ArchiveIssue(r.Context(), db.ArchiveIssueParams{
+			ID:          issue.ID,
+			ArchivedBy:  archivedByUUID,
+			WorkspaceID: issue.WorkspaceID,
+		})
+		if err != nil {
+			slog.Warn("batch archive issue failed", "issue_id", issueID, "error", err)
+			continue
+		}
+
+		prefix := h.getIssuePrefix(r.Context(), archivedIssue.WorkspaceID)
+		resp := issueToResponse(archivedIssue, prefix)
+		h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{"issue": resp})
+		archived++
+	}
+
+	slog.Info("batch archive issues", append(logger.RequestAttrs(r), "count", archived)...)
+	writeJSON(w, http.StatusOK, map[string]any{"archived": archived})
+}

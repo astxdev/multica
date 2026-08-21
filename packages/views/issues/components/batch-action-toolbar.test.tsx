@@ -8,7 +8,17 @@ import { BatchActionToolbar } from "./batch-action-toolbar";
 // this selection, so each test sets `selection.selectedIds` before rendering.
 const selection = vi.hoisted(() => ({
   selectedIds: new Set<string>(),
-  clear: () => {},
+  clear: vi.fn(),
+}));
+
+const batchArchive = vi.hoisted(() => ({
+  mutateAsync: vi.fn().mockResolvedValue({ archived: 0 }),
+  isPending: false,
+}));
+
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
 }));
 
 vi.mock("@multica/core/issues/stores/selection-store", () => ({
@@ -19,7 +29,10 @@ vi.mock("@multica/core/issues/stores/selection-store", () => ({
 vi.mock("@multica/core/issues/mutations", () => ({
   useBatchUpdateIssues: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useBatchDeleteIssues: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useBatchArchiveIssues: () => batchArchive,
 }));
+
+vi.mock("sonner", () => ({ toast: toastMock }));
 
 vi.mock("../../i18n", () => ({
   useT: () => ({ t: () => "label" }),
@@ -84,6 +97,11 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
 
 beforeEach(() => {
   selection.selectedIds = new Set();
+  selection.clear.mockClear();
+  batchArchive.mutateAsync.mockClear();
+  batchArchive.mutateAsync.mockResolvedValue({ archived: 0 });
+  toastMock.success.mockClear();
+  toastMock.error.mockClear();
 });
 
 describe("BatchActionToolbar picker wiring", () => {
@@ -150,5 +168,45 @@ describe("BatchActionToolbar picker wiring", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("status-picker")).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("BatchActionToolbar archive action", () => {
+  it("archives the selected issues and clears the selection, with no confirm dialog", async () => {
+    const issues = [makeIssue({ id: "a" }), makeIssue({ id: "b" })];
+    selection.selectedIds = new Set(["a", "b"]);
+
+    render(<BatchActionToolbar issues={issues} />);
+
+    // Mocked pickers render plain divs (no button role), so the only real
+    // <button> elements are: clear selection (X), Archive, Delete — in DOM order.
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(3);
+    const archiveButton = buttons[1]!;
+
+    archiveButton.click();
+
+    await waitFor(() => {
+      expect(batchArchive.mutateAsync).toHaveBeenCalledWith(["a", "b"]);
+    });
+    expect(selection.clear).toHaveBeenCalled();
+    expect(toastMock.success).toHaveBeenCalled();
+    // No AlertDialog opens for archive, unlike delete.
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("shows an error toast and keeps the selection when the batch archive call fails", async () => {
+    batchArchive.mutateAsync.mockRejectedValueOnce(new Error("boom"));
+    const issues = [makeIssue({ id: "a" })];
+    selection.selectedIds = new Set(["a"]);
+
+    render(<BatchActionToolbar issues={issues} />);
+    const archiveButton = screen.getAllByRole("button")[1]!;
+    archiveButton.click();
+
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalled();
+    });
+    expect(selection.clear).not.toHaveBeenCalled();
   });
 });

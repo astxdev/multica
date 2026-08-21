@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import type { UpdateIssueRequest } from "@multica/core/types";
 import {
+  useBatchArchiveIssues,
   useBatchDeleteIssues,
   useBatchUpdateIssues,
   useUpdateIssue,
@@ -48,6 +49,7 @@ export function useIssueSurfaceActions({
   const updateIssueMutation = useUpdateIssue();
   const batchUpdateMutation = useBatchUpdateIssues();
   const batchDeleteMutation = useBatchDeleteIssues();
+  const batchArchiveMutation = useBatchArchiveIssues();
 
   const updateIssue = useCallback(
     (
@@ -117,7 +119,8 @@ export function useIssueSurfaceActions({
       isPending:
         updateIssueMutation.isPending ||
         batchUpdateMutation.isPending ||
-        batchDeleteMutation.isPending,
+        batchDeleteMutation.isPending ||
+        batchArchiveMutation.isPending,
       createIssue: openCreateIssue,
       updateIssue,
       moveIssue: (issueId, updates, options) =>
@@ -131,8 +134,12 @@ export function useIssueSurfaceActions({
       batchDelete: async (issueIds) => {
         await batchDeleteMutation.mutateAsync(issueIds);
       },
+      batchArchive: async (issueIds) => {
+        await batchArchiveMutation.mutateAsync(issueIds);
+      },
     }),
     [
+      batchArchiveMutation,
       batchDeleteMutation,
       batchUpdateMutation,
       openCreateIssue,

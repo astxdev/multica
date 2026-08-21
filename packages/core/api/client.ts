@@ -1010,6 +1010,13 @@ export class ApiClient {
     });
   }
 
+  async batchArchiveIssues(issueIds: string[]): Promise<{ archived: number }> {
+    return this.fetch("/api/issues/batch-archive", {
+      method: "POST",
+      body: JSON.stringify({ issue_ids: issueIds }),
+    });
+  }
+
   // Comments
   async listComments(issueId: string): Promise<Comment[]> {
     const raw = await this.fetch<unknown>(`/api/issues/${issueId}/comments`);

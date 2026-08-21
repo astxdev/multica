@@ -705,6 +705,22 @@ export function useBatchDeleteIssues() {
   });
 }
 
+// Bulk counterpart of useArchiveIssue — same reasoning applies: archiving is
+// a pure visibility toggle, so no optimistic patch/rollback, just an
+// onSuccess invalidation to fast-forward the mutating user's own view ahead
+// of the issue:updated WS broadcast every other client relies on.
+export function useBatchArchiveIssues() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.batchArchiveIssues(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.tableAll(wsId) });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Comments / Timeline
 // ---------------------------------------------------------------------------

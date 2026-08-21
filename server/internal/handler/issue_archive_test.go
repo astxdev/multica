@@ -131,3 +131,62 @@ func TestArchiveRestoreIssue(t *testing.T) {
 		t.Errorf("RestoreIssue on non-archived: expected 409, got %d", againRestoreW.Code)
 	}
 }
+
+// TestBatchArchiveIssues covers the bulk endpoint: valid issues get archived
+// and counted, an already-archived issue is skipped (not double-counted or
+// errored), an unknown/foreign id is silently skipped, and an empty
+// issue_ids is rejected with 400.
+func TestBatchArchiveIssues(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+
+	a := createTestIssue(t, "BA-ok A", "todo", "low")
+	b := createTestIssue(t, "BA-ok B", "todo", "low")
+	t.Cleanup(func() { deleteTestIssue(t, a) })
+	t.Cleanup(func() { deleteTestIssue(t, b) })
+
+	// Pre-archive b so the batch call must skip it instead of erroring.
+	preW := httptest.NewRecorder()
+	testHandler.ArchiveIssue(preW, withURLParams(newRequest(http.MethodPost, "/api/issues/"+b+"/archive", nil), "id", b))
+	if preW.Code != http.StatusOK {
+		t.Fatalf("pre-archive b: expected 200, got %d: %s", preW.Code, preW.Body.String())
+	}
+
+	w := httptest.NewRecorder()
+	req := newRequest("POST", "/api/issues/batch-archive", map[string]any{
+		"issue_ids": []string{a, b, "00000000-0000-0000-0000-000000000000"},
+	})
+	testHandler.BatchArchiveIssues(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Archived int `json:"archived"`
+	}
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Archived != 1 {
+		t.Errorf("expected archived=1 (only 'a' was newly archived), got %d", resp.Archived)
+	}
+
+	gw := httptest.NewRecorder()
+	gr := withURLParams(newRequest("GET", "/api/issues/"+a, nil), "id", a)
+	testHandler.GetIssue(gw, gr)
+	var got IssueResponse
+	json.NewDecoder(gw.Body).Decode(&got)
+	if got.ArchivedAt == nil {
+		t.Errorf("issue %s: expected archived_at to be set", a)
+	}
+}
+
+func TestBatchArchiveIssuesEmptyIDsRejected(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	w := httptest.NewRecorder()
+	req := newRequest("POST", "/api/issues/batch-archive", map[string]any{"issue_ids": []string{}})
+	testHandler.BatchArchiveIssues(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for empty issue_ids, got %d", w.Code)
+	}
+}

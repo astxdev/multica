@@ -107,6 +107,7 @@ const actions: IssueSurfaceActions = {
   moveIssue: vi.fn(),
   batchUpdate: vi.fn().mockResolvedValue(undefined),
   batchDelete: vi.fn().mockResolvedValue(undefined),
+  batchArchive: vi.fn().mockResolvedValue(undefined),
 };
 
 function makeIssue(assigneeType: IssueAssigneeType): Issue {

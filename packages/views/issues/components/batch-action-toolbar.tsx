@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -17,7 +17,11 @@ import {
 } from "@multica/ui/components/ui/alert-dialog";
 import type { Issue, UpdateIssueRequest } from "@multica/core/types";
 import { commonIssueFields } from "@multica/core/issues/batch";
-import { useBatchUpdateIssues, useBatchDeleteIssues } from "@multica/core/issues/mutations";
+import {
+  useBatchUpdateIssues,
+  useBatchDeleteIssues,
+  useBatchArchiveIssues,
+} from "@multica/core/issues/mutations";
 import { useModalStore } from "@multica/core/modals";
 import { StatusPicker, PriorityPicker, AssigneePicker } from "./pickers";
 import { useT } from "../../i18n";
@@ -80,9 +84,11 @@ export function BatchActionToolbar({
   const surfaceActions = useIssueSurfaceActionsOptional();
   const batchUpdate = useBatchUpdateIssues();
   const batchDelete = useBatchDeleteIssues();
+  const batchArchive = useBatchArchiveIssues();
   const openModal = useModalStore((s) => s.open);
   const loading =
-    surfaceActions?.isPending ?? (batchUpdate.isPending || batchDelete.isPending);
+    surfaceActions?.isPending ??
+    (batchUpdate.isPending || batchDelete.isPending || batchArchive.isPending);
   const ids = selectedIssues.map((issue) => issue.id);
 
   useEffect(() => {
@@ -143,6 +149,27 @@ export function BatchActionToolbar({
       }
     }
     void handleBatchUpdate(updates);
+  };
+
+  // Archive applies directly, no confirm dialog — mirrors the single-issue
+  // archive action, which is a reversible visibility toggle, not a
+  // destructive operation like delete.
+  const handleBatchArchive = async () => {
+    try {
+      if (surfaceActions) {
+        await surfaceActions.batchArchive(ids);
+      } else {
+        await batchArchive.mutateAsync(ids);
+      }
+      clear();
+      toast.success(t(($) => $.batch.archive_success, { count }));
+    } catch (err) {
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : t(($) => $.batch.archive_failed),
+      );
+    }
   };
 
   const handleBatchDelete = async () => {
@@ -252,6 +279,17 @@ export function BatchActionToolbar({
           trigger={t(($) => $.batch.assignee)}
           align="center"
         />
+
+        {/* Archive */}
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={loading}
+          onClick={() => void handleBatchArchive()}
+        >
+          <Archive className="size-3.5 mr-1" />
+          {t(($) => $.batch.archive)}
+        </Button>
 
         {/* Delete */}
         <Button

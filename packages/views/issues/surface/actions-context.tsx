@@ -29,6 +29,7 @@ export interface IssueSurfaceActions {
     updates: Partial<UpdateIssueRequest>,
   ) => Promise<void>;
   batchDelete: (issueIds: string[]) => Promise<void>;
+  batchArchive: (issueIds: string[]) => Promise<void>;
 }
 
 const IssueSurfaceActionsContext = createContext<IssueSurfaceActions | null>(

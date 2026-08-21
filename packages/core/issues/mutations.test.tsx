@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { setApiInstance } from "../api";
 import type { ApiClient } from "../api/client";
 import {
+  useBatchArchiveIssues,
   useBatchUpdateIssues,
   useResolveComment,
   useUpdateIssue,
@@ -770,5 +771,43 @@ describe("useResolveComment", () => {
 
     // Only b1 is cleared; a1 stays resolved (unresolve never mirrors the clear).
     expect(resolvedIds(qc)).toEqual(["a1"]);
+  });
+});
+
+describe("useBatchArchiveIssues", () => {
+  let qc: QueryClient;
+  let batchArchiveIssues: ReturnType<
+    typeof vi.fn<(ids: string[]) => Promise<{ archived: number }>>
+  >;
+
+  beforeEach(() => {
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    batchArchiveIssues = vi.fn().mockResolvedValue({ archived: 2 });
+    setApiInstance({ batchArchiveIssues } as unknown as ApiClient);
+  });
+
+  afterEach(() => {
+    qc.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("calls the batch-archive endpoint and invalidates list/table caches on success", async () => {
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+
+    const { result } = renderHook(() => useBatchArchiveIssues(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(["issue-1", "issue-2"]);
+    });
+
+    expect(batchArchiveIssues).toHaveBeenCalledWith(["issue-1", "issue-2"]);
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: issueKeys.list(WS_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: issueKeys.tableAll(WS_ID),
+    });
   });
 });
