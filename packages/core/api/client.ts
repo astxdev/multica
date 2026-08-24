@@ -104,6 +104,10 @@ import type {
   CreateProjectResourceRequest,
   UpdateProjectResourceRequest,
   ListProjectResourcesResponse,
+  DailyTask,
+  CreateDailyTaskRequest,
+  UpdateDailyTaskRequest,
+  ListDailyTasksResponse,
   Label,
   IssueProperty,
   IssuePropertyValue,
@@ -315,6 +319,10 @@ import {
   EMPTY_INBOX_ITEMS,
   NotificationPreferenceResponseSchema,
   EMPTY_NOTIFICATION_PREFERENCE_RESPONSE,
+  DailyTaskSchema,
+  ListDailyTasksResponseSchema,
+  EMPTY_DAILY_TASK,
+  EMPTY_LIST_DAILY_TASKS_RESPONSE,
   LabelSchema,
   ListLabelsResponseSchema,
   IssuePropertySchema,
@@ -2811,6 +2819,38 @@ export class ApiClient {
     await this.fetch(`/api/projects/${projectId}/resources/${resourceId}`, {
       method: "DELETE",
     });
+  }
+
+  // Daily Tasks (personal per-member checklist)
+  async listDailyTasks(): Promise<ListDailyTasksResponse> {
+    const raw = await this.fetch<unknown>(`/api/daily-tasks`);
+    return parseWithFallback(raw, ListDailyTasksResponseSchema, EMPTY_LIST_DAILY_TASKS_RESPONSE, {
+      endpoint: "GET /api/daily-tasks",
+    });
+  }
+
+  async createDailyTask(data: CreateDailyTaskRequest): Promise<DailyTask> {
+    const raw = await this.fetch<unknown>(`/api/daily-tasks`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, DailyTaskSchema, EMPTY_DAILY_TASK, {
+      endpoint: "POST /api/daily-tasks",
+    });
+  }
+
+  async updateDailyTask(id: string, data: UpdateDailyTaskRequest): Promise<DailyTask> {
+    const raw = await this.fetch<unknown>(`/api/daily-tasks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, DailyTaskSchema, EMPTY_DAILY_TASK, {
+      endpoint: "PATCH /api/daily-tasks/{id}",
+    });
+  }
+
+  async deleteDailyTask(id: string): Promise<void> {
+    await this.fetch(`/api/daily-tasks/${id}`, { method: "DELETE" });
   }
 
   // Labels

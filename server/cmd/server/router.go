@@ -1454,6 +1454,14 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				})
 			})
 
+			// Daily Tasks (personal per-member checklist)
+			r.Route("/api/daily-tasks", func(r chi.Router) {
+				r.Get("/", h.ListDailyTasks)
+				r.Post("/", h.CreateDailyTask)
+				r.Patch("/{id}", h.ToggleDailyTask)
+				r.Delete("/{id}", h.DeleteDailyTask)
+			})
+
 			// Squads
 			r.Route("/api/squads", func(r chi.Router) {
 				r.Get("/", h.ListSquads)

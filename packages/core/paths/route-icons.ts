@@ -24,6 +24,7 @@ export type RouteIconName =
   | "MessageSquare"
   | "CircleUser"
   | "ListTodo"
+  | "ListChecks"
   | "FolderKanban"
   | "Zap"
   | "Bot"
@@ -55,6 +56,7 @@ export type NavLabelKey =
   | "squads"
   | "usage"
   | "overview"
+  | "daily_tasks"
   | "runtimes"
   | "skills"
   | "settings";
@@ -71,6 +73,7 @@ export type WorkspacePageKey =
   | "squads"
   | "usage"
   | "overview"
+  | "dailyTasks"
   | "runtimes"
   | "skills"
   | "settings";
@@ -99,6 +102,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   squads: { segment: "squads", icon: "Users", navKey: "squads" },
   usage: { segment: "usage", icon: "BarChart3", navKey: "usage" },
   overview: { segment: "overview", icon: "LayoutGrid", navKey: "overview" },
+  dailyTasks: { segment: "daily-tasks", icon: "ListChecks", navKey: "daily_tasks" },
   runtimes: { segment: "runtimes", icon: "Monitor", navKey: "runtimes" },
   skills: { segment: "skills", icon: "BookOpenText", navKey: "skills" },
   settings: { segment: "settings", icon: "Settings", navKey: "settings" },

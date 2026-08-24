@@ -22,6 +22,8 @@ import type {
   CreateBillingCheckoutSessionResponse,
   CreateBillingPortalSessionResponse,
   CronPreviewResponse,
+  DailyTask,
+  ListDailyTasksResponse,
   DingTalkInstallation,
   ListDingTalkInstallationsResponse,
   RedeemDingTalkBindingTokenResponse,
@@ -187,6 +189,38 @@ export const EMPTY_LABEL: Label = {
   usage_count: 0,
   created_at: "",
   updated_at: "",
+};
+
+// Daily tasks are a personal checklist (server scopes by workspace_id +
+// user_id). Keep it lenient like other small resources for forward-compat.
+export const DailyTaskSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  user_id: z.string(),
+  text: z.string(),
+  done: z.boolean().optional().default(false),
+  created_at: z.string(),
+  updated_at: z.string(),
+}).loose();
+
+export const EMPTY_DAILY_TASK: DailyTask = {
+  id: "",
+  workspace_id: "",
+  user_id: "",
+  text: "",
+  done: false,
+  created_at: "",
+  updated_at: "",
+};
+
+export const ListDailyTasksResponseSchema = z.object({
+  tasks: z.array(DailyTaskSchema).default([]),
+  total: z.number().default(0),
+}).loose();
+
+export const EMPTY_LIST_DAILY_TASKS_RESPONSE: ListDailyTasksResponse = {
+  tasks: [],
+  total: 0,
 };
 
 export const ListLabelsResponseSchema = z.object({

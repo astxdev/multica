@@ -1,0 +1,7 @@
+{
+  "title": "Daily Tasks",
+  "add_placeholder": "Add a task...",
+  "empty": "No tasks yet. Add one above to get started.",
+  "delete_tooltip": "Delete task",
+  "error": "Something went wrong. Try again."
+}

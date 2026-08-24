@@ -1,0 +1,7 @@
+{
+  "title": "每日待办",
+  "add_placeholder": "添加待办事项...",
+  "empty": "还没有待办事项，在上方添加一个吧。",
+  "delete_tooltip": "删除",
+  "error": "出了点问题，请重试。"
+}

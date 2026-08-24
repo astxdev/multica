@@ -20,6 +20,7 @@ function workspaceScoped(slug: string) {
     root: () => `${ws}/issues`,
     usage: () => `${ws}/usage`,
     overview: () => `${ws}/overview`,
+    dailyTasks: () => `${ws}/daily-tasks`,
     issues: () => `${ws}/issues`,
     issueDetail: (id: string) => `${ws}/issues/${encode(id)}`,
     projects: () => `${ws}/projects`,

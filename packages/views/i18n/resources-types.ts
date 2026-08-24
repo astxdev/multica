@@ -26,6 +26,7 @@ import type runtimes from "../locales/en/runtimes.json";
 import type layout from "../locales/en/layout.json";
 import type usage from "../locales/en/usage.json";
 import type overview from "../locales/en/overview.json";
+import type dailyTasks from "../locales/en/daily-tasks.json";
 import type squads from "../locales/en/squads.json";
 import type billing from "../locales/en/billing.json";
 
@@ -68,6 +69,7 @@ declare global {
     layout: typeof layout;
     usage: typeof usage;
     overview: typeof overview;
+    "daily-tasks": typeof dailyTasks;
     squads: typeof squads;
     billing: typeof billing;
   }

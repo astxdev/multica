@@ -120,6 +120,7 @@ type NavKey =
   | "squads"
   | "usage"
   | "overview"
+  | "dailyTasks"
   | "runtimes"
   | "skills"
   | "settings";
@@ -137,6 +138,7 @@ type NavLabelKey =
   | "squads"
   | "usage"
   | "overview"
+  | "daily_tasks"
   | "runtimes"
   | "skills"
   | "settings";
@@ -151,6 +153,7 @@ const personalNav: { key: NavKey; labelKey: NavLabelKey }[] = [
 ];
 
 const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
+  { key: "dailyTasks", labelKey: "daily_tasks" },
   { key: "overview", labelKey: "overview" },
   { key: "issues", labelKey: "issues" },
   { key: "projects", labelKey: "projects" },
