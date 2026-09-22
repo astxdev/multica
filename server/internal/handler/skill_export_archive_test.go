@@ -34,6 +34,39 @@ func TestUniqueArchiveFolderName(t *testing.T) {
 	}
 }
 
+func TestSkillMarkdownForExport(t *testing.T) {
+	t.Run("no frontmatter gets one prepended", func(t *testing.T) {
+		got := skillMarkdownForExport("Review Helper", "Helps review PRs", "Do the thing.")
+		want := "---\nname: \"Review Helper\"\ndescription: \"Helps review PRs\"\n---\n\nDo the thing."
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("empty description omits the key", func(t *testing.T) {
+		got := skillMarkdownForExport("Review Helper", "", "Do the thing.")
+		want := "---\nname: \"Review Helper\"\n---\n\nDo the thing."
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("existing frontmatter is left untouched", func(t *testing.T) {
+		content := "---\nname: foo\ndescription: bar\nlicense: MIT\n---\nbody"
+		if got := skillMarkdownForExport("foo", "different", content); got != content {
+			t.Errorf("got %q, want unchanged %q", got, content)
+		}
+	})
+
+	t.Run("special characters are safely quoted", func(t *testing.T) {
+		got := skillMarkdownForExport(`say "hi"`, "line1\nline2", "body")
+		want := "---\nname: \"say \\\"hi\\\"\"\ndescription: \"line1\\nline2\"\n---\n\nbody"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}
+
 func TestWriteZipTextEntryAndResponse(t *testing.T) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)

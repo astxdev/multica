@@ -26,11 +26,13 @@ type ExportSkillsRequest struct {
 // layout mirrors what parseSkillArchive (skill_import_archive.go) expects,
 // so an exported folder can be re-imported as-is.
 //
-// Each folder also gets an INSTRUCTIONS.md duplicate of the same primary
-// content: some external agent runtimes/tools look for that filename
-// instead of SKILL.md, and the skill entity has only one primary-content
-// field, so both names are written rather than trying to guess which one
-// the destination expects.
+// Each folder also gets an INSTRUCTIONS.md duplicate of the same content:
+// some external agent runtimes/tools look for that filename instead of
+// SKILL.md, and the skill entity has only one primary-content field, so both
+// names are written rather than trying to guess which one the destination
+// expects. Both files go through skillMarkdownForExport, which adds a
+// name/description frontmatter block when the raw content doesn't already
+// have one (see its doc comment).
 //
 // IDs that don't parse, don't exist, or belong to another workspace are
 // silently skipped (same tolerance as BatchArchiveIssues) rather than
@@ -76,11 +78,12 @@ func (h *Handler) ExportSkills(w http.ResponseWriter, r *http.Request) {
 		}
 
 		folder := uniqueArchiveFolderName(usedFolderNames, skill.Name)
-		if err := writeZipTextEntry(zw, folder+"/SKILL.md", skill.Content); err != nil {
+		markdown := skillMarkdownForExport(skill.Name, skill.Description, skill.Content)
+		if err := writeZipTextEntry(zw, folder+"/SKILL.md", markdown); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to build export archive")
 			return
 		}
-		if err := writeZipTextEntry(zw, folder+"/INSTRUCTIONS.md", skill.Content); err != nil {
+		if err := writeZipTextEntry(zw, folder+"/INSTRUCTIONS.md", markdown); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to build export archive")
 			return
 		}
@@ -108,6 +111,54 @@ func (h *Handler) ExportSkills(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("export skills", append(logger.RequestAttrs(r), "count", exported)...)
 	writeZipResponse(w, buf.Bytes(), fmt.Sprintf("skills-export-%s.zip", time.Now().UTC().Format("2006-01-02")))
+}
+
+// skillMarkdownForExport returns the markdown written to a skill's exported
+// SKILL.md/INSTRUCTIONS.md. Content that already carries its own YAML
+// frontmatter — the case for skills imported from an archive or URL, which
+// may also have extra fields such as license or allowed-tools — is returned
+// untouched so those fields survive the round trip.
+//
+// Content with no frontmatter is the common case for a skill created via the
+// manual "New skill" form: `content` is plain body text and `description`
+// lives only in the separate DB column, so exporting `content` as-is silently
+// dropped the description. This prepends a frontmatter block built from the
+// skill's current name/description so the exported file always carries them.
+func skillMarkdownForExport(name, description, content string) string {
+	if strings.HasPrefix(content, "---") {
+		return content
+	}
+	var b strings.Builder
+	b.WriteString("---\n")
+	b.WriteString("name: " + yamlDoubleQuoted(name) + "\n")
+	if description != "" {
+		b.WriteString("description: " + yamlDoubleQuoted(description) + "\n")
+	}
+	b.WriteString("---\n\n")
+	b.WriteString(content)
+	return b.String()
+}
+
+// yamlDoubleQuoted renders s as a YAML double-quoted scalar so free-text
+// name/description values (which may contain colons, quotes, or newlines)
+// can't corrupt the frontmatter block they're embedded in.
+func yamlDoubleQuoted(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"':
+			b.WriteString(`\"`)
+		case '\\':
+			b.WriteString(`\\`)
+		case '\n':
+			b.WriteString(`\n`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 // uniqueArchiveFolderName turns a skill/agent name into a safe zip folder
