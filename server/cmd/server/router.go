@@ -1582,6 +1582,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/env", h.GetAgentEnv)
 					r.Put("/env", h.UpdateAgentEnv)
 				})
+				// Bulk export: zip of INSTRUCTIONS.md per selected agent, one
+				// folder each. Sits outside /{id} since it takes a body of ids.
+				r.Post("/export", h.ExportAgents)
 			})
 
 			r.Route("/api/agent-builder/sessions", func(r chi.Router) {
@@ -1602,6 +1605,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/", h.CreateSkill)
 				r.Get("/search", h.SearchSkills)
 				r.Post("/import", h.ImportSkill)
+				// Bulk export: zip of SKILL.md (+ supporting skill_file
+				// entries) per selected skill, one folder each. Sits
+				// outside /{id} since it takes a body of ids.
+				r.Post("/export", h.ExportSkills)
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", h.GetSkill)
 					r.Put("/", h.UpdateSkill)

@@ -87,7 +87,10 @@
     "cancel": "취소",
     "add_confirm": "추가 ({{num}})",
     "adding": "추가 중...",
-    "added_multi_toast_other": "에이전트 {{count}}개에 추가했습니다"
+    "added_multi_toast_other": "에이전트 {{count}}개에 추가했습니다",
+    "export": "내보내기",
+    "exporting": "내보내는 중…",
+    "export_failed_toast": "스킬 내보내기에 실패했습니다"
   },
   "toolbar": {
     "result_count_title": "일치하는 스킬 / 전체 스킬",

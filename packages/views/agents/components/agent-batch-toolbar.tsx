@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@multica/ui/components/ui/dialog";
-import { Archive, ArchiveRestore, Loader2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Download, Loader2, X } from "lucide-react";
 import { useT } from "../../i18n";
 import { AccessPicker, type AccessChange } from "./inspector/access-picker";
 import type { AgentListRow } from "./agents-page";
@@ -55,6 +55,7 @@ export function AgentBatchToolbar({
   const [confirmAccess, setConfirmAccess] = useState(false);
   const [accessChange, setAccessChange] = useState<AccessChange | null>(null);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Must be stable: AccessPicker lists this in the effect that notifies us, so
   // an inline callback would re-notify on every render we cause by storing the
@@ -134,6 +135,33 @@ export function AgentBatchToolbar({
     return { succeeded, failed };
   };
 
+  // Bundles the owner-written instructions of the selected agents into a
+  // single zip (one INSTRUCTIONS.md per agent folder) and downloads it. No
+  // react-query mutation here — this is a one-shot file save, not cached
+  // server state. Agents the requester cannot access (private-agent gate)
+  // are silently skipped server-side, same tolerance as the archive/restore
+  // batch actions above.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.exportAgents(rows.map((r) => r.agent.id));
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `agents-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(
+        e instanceof Error && e.message
+          ? e.message
+          : t(($) => $.row_actions.export_failed_toast),
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <AnimatePresence initial={false}>
@@ -184,6 +212,20 @@ export function AgentBatchToolbar({
             <X className="size-3.5 text-muted-foreground" />
           </button>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={exporting}
+          onClick={handleExport}
+        >
+          {exporting ? (
+            <Loader2 className="mr-1 size-3.5 animate-spin" />
+          ) : (
+            <Download className="mr-1 size-3.5" />
+          )}
+          {t(($) => $.row_actions.export)}
+        </Button>
 
         {anyArchived && (
           <Button

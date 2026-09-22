@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Check,
   ChevronRight,
+  Download,
   ExternalLink,
   Loader2,
   MoreHorizontal,
@@ -610,10 +611,36 @@ export function SkillBatchToolbar({
   const { t } = useT("skills");
   const [addOpen, setAddOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   if (rows.length === 0) return null;
 
   const allDeletable = rows.every((r) => r.canEdit);
+
+  // Bundles the selected skills into a single zip (one folder per skill,
+  // SKILL.md plus any supporting reference files) and downloads it. No
+  // react-query mutation here — this is a one-shot file save, not cached
+  // server state, same reasoning as the CSV export in the issues table.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.exportSkills(rows.map((r) => r.skill.id));
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `skills-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(
+        e instanceof Error && e.message
+          ? e.message
+          : t(($) => $.actions.export_failed_toast),
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const deleteButton = (
     <Button
@@ -655,6 +682,20 @@ export function SkillBatchToolbar({
         <Button variant="ghost" size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="mr-1 size-3.5" />
           {t(($) => $.actions.add_to_agent)}
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <Loader2 className="mr-1 size-3.5 animate-spin" />
+          ) : (
+            <Download className="mr-1 size-3.5" />
+          )}
+          {t(($) => $.actions.export)}
         </Button>
 
         {allDeletable ? (

@@ -121,7 +121,10 @@
     "archive_dialog_title": "归档\"{{name}}\"？",
     "archive_dialog_description": "归档后这个智能体将无法被分配或提及，进行中的 task 会被取消。所有历史会被保留，可以稍后恢复。",
     "archive_dialog_cancel": "取消",
-    "archive_dialog_confirm": "归档"
+    "archive_dialog_confirm": "归档",
+    "export": "导出",
+    "exporting": "正在导出…",
+    "export_failed_toast": "导出智能体失败"
   },
   "detail": {
     "back_to_agents": "智能体",

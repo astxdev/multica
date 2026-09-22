@@ -129,7 +129,10 @@
     "archive_dialog_title": "Archive \"{{name}}\"?",
     "archive_dialog_description": "The agent won't be assignable or mentionable, and any active tasks will be cancelled. All history is preserved and you can restore it later.",
     "archive_dialog_cancel": "Cancel",
-    "archive_dialog_confirm": "Archive"
+    "archive_dialog_confirm": "Archive",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "export_failed_toast": "Failed to export agents"
   },
   "detail": {
     "back_to_agents": "Agents",

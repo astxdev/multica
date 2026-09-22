@@ -1378,6 +1378,19 @@ export class ApiClient {
     return this.fetch(`/api/agents/${id}/cancel-tasks`, { method: "POST" });
   }
 
+  // Bulk export: zip of INSTRUCTIONS.md, one folder per agent. POST because
+  // the id list can exceed URL length limits; routes through `fetchRaw` (not
+  // the JSON-decoding `fetch` wrapper) since the response body is a binary
+  // archive, not JSON — same shape as `getAttachmentBlob`.
+  async exportAgents(agentIds: string[]): Promise<Blob> {
+    const res = await this.fetchRaw("/api/agents/export", {
+      method: "POST",
+      body: JSON.stringify({ agent_ids: agentIds }),
+      extraHeaders: { "Content-Type": "application/json" },
+    });
+    return res.blob();
+  }
+
   async listRuntimes(
     params?: { workspace_id?: string; owner?: "me" },
     workspaceSlug?: string,
@@ -2298,6 +2311,19 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // Bulk export: zip of SKILL.md (+ supporting files), one folder per skill.
+  // POST because the id list can exceed URL length limits; routes through
+  // `fetchRaw` (not the JSON-decoding `fetch` wrapper) since the response
+  // body is a binary archive, not JSON — same shape as `getAttachmentBlob`.
+  async exportSkills(skillIds: string[]): Promise<Blob> {
+    const res = await this.fetchRaw("/api/skills/export", {
+      method: "POST",
+      body: JSON.stringify({ skill_ids: skillIds }),
+      extraHeaders: { "Content-Type": "application/json" },
+    });
+    return res.blob();
   }
 
   async listAgentSkills(agentId: string): Promise<SkillSummary[]> {

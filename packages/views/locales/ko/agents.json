@@ -121,7 +121,10 @@
     "archive_dialog_title": "\"{{name}}\"을(를) 보관할까요?",
     "archive_dialog_description": "이 에이전트는 할당하거나 멘션할 수 없고, 활성 작업은 모두 취소됩니다. 기록은 유지되며 나중에 복원할 수 있습니다.",
     "archive_dialog_cancel": "취소",
-    "archive_dialog_confirm": "보관"
+    "archive_dialog_confirm": "보관",
+    "export": "내보내기",
+    "exporting": "내보내는 중…",
+    "export_failed_toast": "에이전트 내보내기에 실패했습니다"
   },
   "detail": {
     "back_to_agents": "에이전트",

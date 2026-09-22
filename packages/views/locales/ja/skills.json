@@ -87,7 +87,10 @@
     "cancel": "キャンセル",
     "add_confirm": "追加（{{num}}）",
     "adding": "追加中...",
-    "added_multi_toast_other": "{{count}} 件のエージェントに追加しました"
+    "added_multi_toast_other": "{{count}} 件のエージェントに追加しました",
+    "export": "エクスポート",
+    "exporting": "エクスポート中…",
+    "export_failed_toast": "スキルのエクスポートに失敗しました"
   },
   "toolbar": {
     "result_count_title": "該当スキル / 全スキル",

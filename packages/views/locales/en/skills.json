@@ -91,7 +91,10 @@
     "add_confirm": "Add ({{num}})",
     "adding": "Adding...",
     "added_multi_toast_one": "Added to {{count}} agent",
-    "added_multi_toast_other": "Added to {{count}} agents"
+    "added_multi_toast_other": "Added to {{count}} agents",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "export_failed_toast": "Failed to export skills"
   },
   "toolbar": {
     "result_count_title": "Matching skills / all skills",

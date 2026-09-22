@@ -113,7 +113,10 @@
     "archive_dialog_title": "\"{{name}}\" をアーカイブしますか？",
     "archive_dialog_description": "このエージェントは割り当てやメンションができなくなり、アクティブな作業はすべてキャンセルされます。履歴はすべて保持され、後で復元できます。",
     "archive_dialog_cancel": "キャンセル",
-    "archive_dialog_confirm": "アーカイブ"
+    "archive_dialog_confirm": "アーカイブ",
+    "export": "エクスポート",
+    "exporting": "エクスポート中…",
+    "export_failed_toast": "エージェントのエクスポートに失敗しました"
   },
   "detail": {
     "back_to_agents": "エージェント",

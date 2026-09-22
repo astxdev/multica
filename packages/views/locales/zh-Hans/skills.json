@@ -87,7 +87,10 @@
     "cancel": "取消",
     "add_confirm": "添加（{{num}}）",
     "adding": "添加中...",
-    "added_multi_toast_other": "已添加到 {{count}} 个智能体"
+    "added_multi_toast_other": "已添加到 {{count}} 个智能体",
+    "export": "导出",
+    "exporting": "正在导出…",
+    "export_failed_toast": "导出 skill 失败"
   },
   "toolbar": {
     "result_count_title": "当前结果 / 全部 skill",
