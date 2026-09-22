@@ -26,6 +26,12 @@ type ExportSkillsRequest struct {
 // layout mirrors what parseSkillArchive (skill_import_archive.go) expects,
 // so an exported folder can be re-imported as-is.
 //
+// Each folder also gets an INSTRUCTIONS.md duplicate of the same primary
+// content: some external agent runtimes/tools look for that filename
+// instead of SKILL.md, and the skill entity has only one primary-content
+// field, so both names are written rather than trying to guess which one
+// the destination expects.
+//
 // IDs that don't parse, don't exist, or belong to another workspace are
 // silently skipped (same tolerance as BatchArchiveIssues) rather than
 // failing the whole export.
@@ -71,6 +77,10 @@ func (h *Handler) ExportSkills(w http.ResponseWriter, r *http.Request) {
 
 		folder := uniqueArchiveFolderName(usedFolderNames, skill.Name)
 		if err := writeZipTextEntry(zw, folder+"/SKILL.md", skill.Content); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to build export archive")
+			return
+		}
+		if err := writeZipTextEntry(zw, folder+"/INSTRUCTIONS.md", skill.Content); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to build export archive")
 			return
 		}
