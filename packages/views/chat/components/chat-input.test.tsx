@@ -525,6 +525,8 @@ describe("ChatInput project context", () => {
     due_date: null,
     created_at: new Date(0).toISOString(),
     updated_at: new Date(0).toISOString(),
+    archived_at: null,
+    archived_by: null,
     issue_count: 0,
     done_count: 0,
     resource_count: 0,

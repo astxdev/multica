@@ -128,6 +128,16 @@
     "confirm": "删除",
     "cancel": "取消"
   },
+  "archive": {
+    "archive_action": "归档项目",
+    "restore_action": "恢复项目",
+    "archived_badge": "已归档",
+    "show_archived": "显示已归档",
+    "toast_archived": "项目已归档",
+    "toast_archive_failed": "归档项目失败",
+    "toast_restored": "项目已恢复",
+    "toast_restore_failed": "恢复项目失败"
+  },
   "picker": {
     "no_project": "无项目",
     "empty": "还没有项目",

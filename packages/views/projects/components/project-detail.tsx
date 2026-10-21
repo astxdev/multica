@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
-import { Check, ChevronRight, Link2, MoreHorizontal, PanelRight, Pin, PinOff, Trash2, UserMinus } from "lucide-react";
+import { Archive, ArchiveRestore, Check, ChevronRight, Link2, MoreHorizontal, PanelRight, Pin, PinOff, Trash2, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@multica/ui/lib/utils";
 import { copyText } from "@multica/ui/lib/clipboard";
@@ -26,6 +26,7 @@ import { useNavigation } from "../../navigation";
 import { TitleEditor, ContentEditor, type ContentEditorRef } from "../../editor";
 import { PriorityIcon } from "../../issues/components/priority-icon";
 import { ProjectResourcesSection } from "./project-resources-section";
+import { useProjectArchiveActions } from "./use-project-archive-actions";
 import { ProjectStartDatePicker } from "./project-start-date-picker";
 import { ProjectDueDatePicker } from "./project-due-date-picker";
 import { IssueSurface } from "../../issues/surface/issue-surface";
@@ -130,6 +131,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const { getActorName } = useActorName();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const { archiveProject, restoreProject } = useProjectArchiveActions();
+  const isArchived = !!project?.archived_at;
   const { data: pinnedItems = [] } = useQuery({
     ...pinListOptions(wsId, userId ?? ""),
     enabled: !!userId,
@@ -273,6 +276,15 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             if (trimmed && trimmed !== project.title) handleUpdateField({ title: trimmed });
           }}
         />
+        {/* An archived project stays fully readable and editable, so without
+            this the page looks identical to an active one — the badge is the
+            only cue that it is out of the Projects view and the pickers. */}
+        {isArchived && (
+          <span className="mt-2 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-micro text-muted-foreground">
+            <Archive className="size-3" />
+            {t(($) => $.archive.archived_badge)}
+          </span>
+        )}
       </div>
 
       {/* Properties */}
@@ -511,6 +523,18 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                     <Link2 className="h-3.5 w-3.5" />
                     {t(($) => $.detail.copy_link)}
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {isArchived ? (
+                    <DropdownMenuItem onClick={() => restoreProject(projectId)}>
+                      <ArchiveRestore className="h-3.5 w-3.5" />
+                      {t(($) => $.archive.restore_action)}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => archiveProject(projectId)}>
+                      <Archive className="h-3.5 w-3.5" />
+                      {t(($) => $.archive.archive_action)}
+                    </DropdownMenuItem>
+                  )}
                   {isWorkspaceAdmin && (
                     <>
                       <DropdownMenuSeparator />

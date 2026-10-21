@@ -14,21 +14,26 @@ const mocks = vi.hoisted(() => ({
   pins: [] as Array<{ item_type: string; item_id: string }>,
   updateProject: vi.fn(),
   deleteProject: vi.fn(),
+  archiveProject: vi.fn(),
+  restoreProject: vi.fn(),
   createPin: vi.fn(),
   deletePin: vi.fn(),
   openModal: vi.fn(),
+  projectListIncludeArchived: undefined as boolean | undefined,
   projectViewState: {
     viewMode: "compact",
     sortField: "name",
     sortDirection: "asc",
     hiddenColumns: [] as string[],
     filters: { statuses: [], priorities: [], leads: [] },
+    showArchived: false,
     setViewMode: vi.fn(),
     toggleSort: vi.fn(),
     setSortField: vi.fn(),
     setSortDirection: vi.fn(),
     toggleColumn: vi.fn(),
     toggleFilter: vi.fn(),
+    toggleShowArchived: vi.fn(),
     clearFilters: vi.fn(),
   },
 }));
@@ -53,11 +58,21 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@multica/core/projects", () => ({
-  projectListOptions: () => ({ queryKey: ["projects"] }),
+  projectListOptions: (_wsId: string, opts?: { includeArchived?: boolean }) => {
+    mocks.projectListIncludeArchived = opts?.includeArchived;
+    return { queryKey: ["projects"] };
+  },
   useUpdateProject: () => ({ mutate: mocks.updateProject }),
   useDeleteProject: () => ({ mutate: mocks.deleteProject }),
   useProjectViewStore: (selector: (state: unknown) => unknown) =>
     selector(mocks.projectViewState),
+}));
+
+// useProjectArchiveActions reaches for the mutations module directly, so the
+// barrel mock above does not cover it.
+vi.mock("@multica/core/projects/mutations", () => ({
+  useArchiveProject: () => ({ mutate: mocks.archiveProject }),
+  useRestoreProject: () => ({ mutate: mocks.restoreProject }),
 }));
 
 vi.mock("@multica/core/pins", () => ({
@@ -196,6 +211,8 @@ const PROJECT: Project = {
   due_date: null,
   created_at: "2026-06-01T00:00:00Z",
   updated_at: "2026-06-01T00:00:00Z",
+  archived_at: null,
+  archived_by: null,
   issue_count: 3,
   done_count: 1,
   resource_count: 0,
@@ -239,14 +256,19 @@ beforeEach(() => {
   mocks.pins = [];
   mocks.updateProject.mockClear();
   mocks.deleteProject.mockClear();
+  mocks.archiveProject.mockClear();
+  mocks.restoreProject.mockClear();
   mocks.createPin.mockClear();
   mocks.deletePin.mockClear();
   mocks.openModal.mockClear();
+  mocks.projectListIncludeArchived = undefined;
   mocks.projectViewState.viewMode = "compact";
   mocks.projectViewState.sortField = "name";
   mocks.projectViewState.sortDirection = "asc";
   mocks.projectViewState.hiddenColumns = [];
   mocks.projectViewState.filters = { statuses: [], priorities: [], leads: [] };
+  mocks.projectViewState.showArchived = false;
+  mocks.projectViewState.toggleShowArchived.mockClear();
 });
 
 describe("ProjectsPage compact row navigation", () => {
@@ -339,5 +361,80 @@ describe("ProjectsPage compact row navigation", () => {
     }
     expect(push).not.toHaveBeenCalled();
     open.mockRestore();
+  });
+});
+
+describe("ProjectsPage archive", () => {
+  async function openRowMenu() {
+    const user = userEvent.setup();
+    renderProjects();
+    await user.click(
+      within(projectRow()).getByRole("button", { name: "Project actions" }),
+    );
+    return user;
+  }
+
+  it("archives an active project straight from the row menu", async () => {
+    const user = await openRowMenu();
+
+    await user.click(screen.getByRole("button", { name: "Archive project" }));
+
+    expect(mocks.archiveProject).toHaveBeenCalledWith(
+      PROJECT.id,
+      expect.anything(),
+    );
+    expect(mocks.restoreProject).not.toHaveBeenCalled();
+    // Reversible, so it must not route through the delete confirmation.
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("offers restore instead of archive once the project is archived", async () => {
+    mocks.projects = [{ ...PROJECT, archived_at: "2026-10-01T00:00:00Z" }];
+    const user = await openRowMenu();
+
+    expect(
+      screen.queryByRole("button", { name: "Archive project" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Restore project" }));
+
+    expect(mocks.restoreProject).toHaveBeenCalledWith(
+      PROJECT.id,
+      expect.anything(),
+    );
+    expect(mocks.archiveProject).not.toHaveBeenCalled();
+  });
+
+  it("badges archived rows so they are distinguishable from active ones", () => {
+    mocks.projects = [{ ...PROJECT, archived_at: "2026-10-01T00:00:00Z" }];
+    renderProjects();
+
+    expect(within(projectRow()).getByText("Archived")).toBeInTheDocument();
+  });
+
+  it("leaves active rows unbadged", () => {
+    renderProjects();
+
+    expect(within(projectRow()).queryByText("Archived")).not.toBeInTheDocument();
+  });
+
+  // The list is served by a different request, not narrowed client-side: with
+  // the toggle off the server never sends archived projects at all.
+  it("asks the server for archived projects only while Show archived is on", () => {
+    renderProjects();
+    expect(mocks.projectListIncludeArchived).toBe(false);
+
+    mocks.projectViewState.showArchived = true;
+    renderProjects();
+    expect(mocks.projectListIncludeArchived).toBe(true);
+  });
+
+  it("toggles Show archived from the filter menu", async () => {
+    const user = userEvent.setup();
+    renderProjects();
+
+    await user.click(screen.getByRole("button", { name: /Filter/ }));
+    await user.click(screen.getByRole("button", { name: "Show archived" }));
+
+    expect(mocks.projectViewState.toggleShowArchived).toHaveBeenCalled();
   });
 });

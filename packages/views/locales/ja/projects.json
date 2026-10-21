@@ -128,6 +128,16 @@
     "confirm": "削除",
     "cancel": "キャンセル"
   },
+  "archive": {
+    "archive_action": "プロジェクトをアーカイブ",
+    "restore_action": "プロジェクトを復元",
+    "archived_badge": "アーカイブ済み",
+    "show_archived": "アーカイブ済みを表示",
+    "toast_archived": "プロジェクトをアーカイブしました",
+    "toast_archive_failed": "プロジェクトのアーカイブに失敗しました",
+    "toast_restored": "プロジェクトを復元しました",
+    "toast_restore_failed": "プロジェクトの復元に失敗しました"
+  },
   "picker": {
     "no_project": "プロジェクトなし",
     "empty": "プロジェクトはまだありません",
