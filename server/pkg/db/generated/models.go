@@ -1052,6 +1052,8 @@ type Project struct {
 	Priority    string             `json:"priority"`
 	StartDate   pgtype.Date        `json:"start_date"`
 	DueDate     pgtype.Date        `json:"due_date"`
+	ArchivedAt  pgtype.Timestamptz `json:"archived_at"`
+	ArchivedBy  pgtype.UUID        `json:"archived_by"`
 }
 
 type ProjectResource struct {
