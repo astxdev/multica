@@ -1040,6 +1040,53 @@ describe("SearchProjectsResponseSchema date drift", () => {
     expect(parsed.projects[0]?.start_date).toBeNull();
     expect(parsed.projects[0]?.due_date).toBeNull();
   });
+
+  it("parses archived_at / archived_by when the backend returns them", () => {
+    const parsed = parseWithFallback(
+      {
+        projects: [
+          {
+            ...baseProject,
+            archived_at: "2026-10-01T00:00:00Z",
+            archived_by: "user-1",
+          },
+        ],
+        total: 1,
+      },
+      SearchProjectsResponseSchema,
+      EMPTY_SEARCH_PROJECTS_RESPONSE,
+      ENDPOINT,
+    );
+    expect(parsed.projects[0]?.archived_at).toBe("2026-10-01T00:00:00Z");
+    expect(parsed.projects[0]?.archived_by).toBe("user-1");
+  });
+
+  // A backend that predates project archiving omits both keys; the defaults
+  // must read as "not archived" rather than blanking the batch.
+  it("defaults missing archived_at / archived_by to null", () => {
+    const parsed = parseWithFallback(
+      { projects: [baseProject], total: 1 },
+      SearchProjectsResponseSchema,
+      EMPTY_SEARCH_PROJECTS_RESPONSE,
+      ENDPOINT,
+    );
+    expect(parsed).not.toBe(EMPTY_SEARCH_PROJECTS_RESPONSE);
+    expect(parsed.projects[0]?.archived_at).toBeNull();
+    expect(parsed.projects[0]?.archived_by).toBeNull();
+  });
+
+  // A malformed archived_at (wrong type, not just absent) must not take the
+  // whole result set down with it.
+  it("falls back when archived_at is the wrong type", () => {
+    expect(
+      parseWithFallback(
+        { projects: [{ ...baseProject, archived_at: 1761955200 }], total: 1 },
+        SearchProjectsResponseSchema,
+        EMPTY_SEARCH_PROJECTS_RESPONSE,
+        ENDPOINT,
+      ),
+    ).toBe(EMPTY_SEARCH_PROJECTS_RESPONSE);
+  });
 });
 
 // The "run now" flow branches on run.status/reason_code to avoid a false-success

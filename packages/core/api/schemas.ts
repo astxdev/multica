@@ -872,6 +872,9 @@ const ProjectSchema = z.object({
   due_date: z.string().nullable().default(null),
   created_at: z.string(),
   updated_at: z.string(),
+  // Older backends predate project archiving; default to null (not archived).
+  archived_at: z.string().nullable().default(null),
+  archived_by: z.string().nullable().default(null),
   issue_count: z.number().default(0),
   done_count: z.number().default(0),
   resource_count: z.number().default(0),

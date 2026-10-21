@@ -57,12 +57,19 @@ export interface ProjectViewState {
   sortDirection: ProjectSortDirection;
   hiddenColumns: ProjectColumnKey[];
   filters: ProjectListFilters;
+  // When true the Projects view asks the server for archived projects too
+  // (?include_archived=true) instead of the active-only default. Not
+  // persisted: a toggle left stuck on would have the user staring at parked
+  // projects with no obvious cause, the same reasoning as the Issues view's
+  // includeArchived.
+  showArchived: boolean;
   setViewMode: (mode: ProjectViewMode) => void;
   toggleSort: (field: ProjectSortField) => void;
   setSortField: (field: ProjectSortField) => void;
   setSortDirection: (direction: ProjectSortDirection) => void;
   toggleColumn: (key: ProjectColumnKey) => void;
   toggleFilter: (key: keyof ProjectListFilters, value: string) => void;
+  toggleShowArchived: () => void;
   clearFilters: () => void;
 }
 
@@ -72,6 +79,7 @@ const DEFAULTS = {
   sortDirection: PROJECT_SORT_DEFAULT_DIRECTION.created,
   hiddenColumns: PROJECT_DEFAULT_HIDDEN_COLUMNS,
   filters: EMPTY_PROJECT_FILTERS,
+  showArchived: false,
 };
 
 export const useProjectViewStore = create<ProjectViewState>()(
@@ -112,6 +120,10 @@ export const useProjectViewStore = create<ProjectViewState>()(
             : [...list, value];
           return { filters: { ...state.filters, [key]: next } };
         }),
+      toggleShowArchived: () =>
+        set((state) => ({ showArchived: !state.showArchived })),
+      // showArchived is a display mode, not a filter dimension, so Reset
+      // filters leaves it alone — same as the Issues view.
       clearFilters: () => set({ filters: EMPTY_PROJECT_FILTERS }),
     }),
     {
