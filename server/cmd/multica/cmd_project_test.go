@@ -326,3 +326,42 @@ func TestBuildResourceRefFromFlagsLocalDirectoryMerges(t *testing.T) {
 		}
 	})
 }
+
+// TestProjectArchiveCommandsRegistered pins the command surface: `archive` and
+// `unarchive` must both be reachable under `multica project`, each taking a
+// single project id. The CLI verb is `unarchive` even though the endpoint is
+// /restore, so this also guards that naming from drifting back.
+func TestProjectArchiveCommandsRegistered(t *testing.T) {
+	want := map[string]bool{"archive": false, "unarchive": false}
+	for _, c := range projectCmd.Commands() {
+		if _, ok := want[c.Name()]; ok {
+			want[c.Name()] = true
+			if err := c.Args(c, []string{"p1"}); err != nil {
+				t.Errorf("%s should accept one project id: %v", c.Name(), err)
+			}
+			if err := c.Args(c, nil); err == nil {
+				t.Errorf("%s should reject a missing project id", c.Name())
+			}
+			if c.Flags().Lookup("output") == nil {
+				t.Errorf("%s should expose --output", c.Name())
+			}
+		}
+	}
+	for name, found := range want {
+		if !found {
+			t.Errorf("`multica project %s` is not registered", name)
+		}
+	}
+}
+
+// `project list` hides archived projects unless --include-archived is passed,
+// mirroring GET /api/projects.
+func TestProjectListIncludeArchivedFlag(t *testing.T) {
+	f := projectListCmd.Flags().Lookup("include-archived")
+	if f == nil {
+		t.Fatal("`project list --include-archived` is not registered")
+	}
+	if f.DefValue != "false" {
+		t.Errorf("--include-archived should default to false, got %q", f.DefValue)
+	}
+}
