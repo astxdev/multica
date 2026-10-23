@@ -18,6 +18,11 @@ export interface Project {
   due_date: string | null;
   created_at: string;
   updated_at: string;
+  // Non-null once the project is archived: hidden from the default Projects
+  // view, from project pickers, and from project search, but still openable by
+  // id and restorable. Mirrors issue archived_at/archived_by.
+  archived_at: string | null;
+  archived_by: string | null;
   issue_count: number;
   done_count: number;
   resource_count: number;

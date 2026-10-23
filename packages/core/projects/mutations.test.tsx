@@ -12,7 +12,12 @@ import {
   getIssueSurfaceViewStore,
   pruneIssueSurfaceViewStates,
 } from "../issues/stores/surface-view-store";
-import { useDeleteProject } from "./mutations";
+import {
+  useArchiveProject,
+  useDeleteProject,
+  useRestoreProject,
+} from "./mutations";
+import { projectKeys } from "./queries";
 
 vi.mock("../hooks", () => ({
   useWorkspaceId: () => "ws-1",
@@ -57,5 +62,72 @@ describe("useDeleteProject", () => {
 
     expect(deleteProject).toHaveBeenCalledWith("p1");
     expect(store.getState().viewMode).toBe("board");
+  });
+});
+
+// Archive/restore move a project between the two list variants, so neither
+// list can be patched locally — both must be invalidated. projectKeys.list is
+// a prefix of projectKeys.listWithArchived, so one invalidation at the `all`
+// level has to reach both.
+describe("useArchiveProject / useRestoreProject", () => {
+  let qc: QueryClient;
+  let archiveProject: ReturnType<typeof vi.fn<() => Promise<unknown>>>;
+  let restoreProject: ReturnType<typeof vi.fn<() => Promise<unknown>>>;
+
+  beforeEach(() => {
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    archiveProject = vi.fn().mockResolvedValue({ id: "p1" });
+    restoreProject = vi.fn().mockResolvedValue({ id: "p1" });
+    setApiInstance({ archiveProject, restoreProject } as unknown as ApiClient);
+    setCurrentWorkspace("acme", "ws-1");
+  });
+
+  afterEach(() => {
+    qc.clear();
+    setCurrentWorkspace(null, null);
+    vi.restoreAllMocks();
+  });
+
+  function seedBothLists() {
+    qc.setQueryData(projectKeys.list("ws-1"), { projects: [], total: 0 });
+    qc.setQueryData(projectKeys.listWithArchived("ws-1"), {
+      projects: [],
+      total: 0,
+    });
+  }
+
+  function staleFlags() {
+    return [
+      qc.getQueryState(projectKeys.list("ws-1"))?.isInvalidated,
+      qc.getQueryState(projectKeys.listWithArchived("ws-1"))?.isInvalidated,
+    ];
+  }
+
+  it("invalidates both the active and the archived list on archive", async () => {
+    seedBothLists();
+    const { result } = renderHook(() => useArchiveProject(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync("p1");
+    });
+
+    expect(archiveProject).toHaveBeenCalledWith("p1");
+    expect(staleFlags()).toEqual([true, true]);
+  });
+
+  it("invalidates both lists on restore", async () => {
+    seedBothLists();
+    const { result } = renderHook(() => useRestoreProject(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync("p1");
+    });
+
+    expect(restoreProject).toHaveBeenCalledWith("p1");
+    expect(staleFlags()).toEqual([true, true]);
   });
 });

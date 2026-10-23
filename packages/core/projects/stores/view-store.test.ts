@@ -26,7 +26,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
-  useProjectViewStore.setState({ viewMode: "compact" });
+  useProjectViewStore.setState({ viewMode: "compact", showArchived: false });
   setCurrentWorkspace(null, null);
 });
 
@@ -42,6 +42,38 @@ describe("useProjectViewStore", () => {
   it("setViewMode mutates the store", () => {
     useProjectViewStore.getState().setViewMode("comfortable");
     expect(useProjectViewStore.getState().viewMode).toBe("comfortable");
+  });
+
+  it("hides archived projects by default and toggles back and forth", () => {
+    expect(useProjectViewStore.getState().showArchived).toBe(false);
+
+    useProjectViewStore.getState().toggleShowArchived();
+    expect(useProjectViewStore.getState().showArchived).toBe(true);
+
+    useProjectViewStore.getState().toggleShowArchived();
+    expect(useProjectViewStore.getState().showArchived).toBe(false);
+  });
+
+  // A persisted showArchived would strand the user in the archived view across
+  // sessions with no visible cause, so it stays session-local. The partialize
+  // assertion below is the other half of this guarantee.
+  it("does not persist showArchived", async () => {
+    setCurrentWorkspace("acme", "ws_a");
+    await flush();
+    useProjectViewStore.getState().toggleShowArchived();
+    expect(useProjectViewStore.getState().showArchived).toBe(true);
+
+    const raw = localStorage.getItem("multica_projects_view:acme");
+    expect(raw).not.toBeNull();
+    expect(JSON.parse(raw as string).state).not.toHaveProperty("showArchived");
+  });
+
+  // clearFilters is the "Reset filters" affordance; showArchived is a display
+  // mode, not a filter dimension, so resetting must leave it alone.
+  it("clearFilters leaves showArchived untouched", () => {
+    useProjectViewStore.getState().toggleShowArchived();
+    useProjectViewStore.getState().clearFilters();
+    expect(useProjectViewStore.getState().showArchived).toBe(true);
   });
 
   it("partialize persists view prefs (no actions) under the workspace-namespaced key", async () => {

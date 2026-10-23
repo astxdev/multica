@@ -54,6 +54,34 @@ export function useUpdateProject() {
   });
 }
 
+// Archive/restore are pure visibility toggles — reversible, with no cascade
+// to sweep (unlike delete, which also clears chat context and saved views).
+// Both lists change in opposite directions, so there is nothing locally
+// predictable to patch: invalidate the whole project tree and let the server
+// decide which list the project belongs in. The server's project:updated
+// broadcast does the same for every other connected client.
+export function useArchiveProject() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (id: string) => api.archiveProject(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+    },
+  });
+}
+
+export function useRestoreProject() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (id: string) => api.restoreProject(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+    },
+  });
+}
+
 export function useDeleteProject() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();

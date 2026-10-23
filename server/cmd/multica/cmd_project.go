@@ -58,6 +58,20 @@ var projectStatusCmd = &cobra.Command{
 	RunE:  runProjectStatus,
 }
 
+var projectArchiveCmd = &cobra.Command{
+	Use:   "archive <id>",
+	Short: "Archive a project (hides it from the project list and pickers)",
+	Args:  exactArgs(1),
+	RunE:  runProjectArchive,
+}
+
+var projectUnarchiveCmd = &cobra.Command{
+	Use:   "unarchive <id>",
+	Short: "Restore an archived project",
+	Args:  exactArgs(1),
+	RunE:  runProjectUnarchive,
+}
+
 var projectResourceCmd = &cobra.Command{
 	Use:   "resource",
 	Short: "Manage resources attached to a project",
@@ -114,6 +128,8 @@ func init() {
 	projectCmd.AddCommand(projectUpdateCmd)
 	projectCmd.AddCommand(projectDeleteCmd)
 	projectCmd.AddCommand(projectStatusCmd)
+	projectCmd.AddCommand(projectArchiveCmd)
+	projectCmd.AddCommand(projectUnarchiveCmd)
 	projectCmd.AddCommand(projectResourceCmd)
 
 	projectResourceCmd.AddCommand(projectResourceListCmd)
@@ -125,6 +141,7 @@ func init() {
 	projectListCmd.Flags().String("output", "table", "Output format: table or json")
 	projectListCmd.Flags().Bool("full-id", false, "Show full UUIDs in table output")
 	projectListCmd.Flags().String("status", "", "Filter by status")
+	projectListCmd.Flags().Bool("include-archived", false, "Include archived projects (hidden by default)")
 
 	// project get
 	projectGetCmd.Flags().String("output", "json", "Output format: table or json")
@@ -189,6 +206,10 @@ func init() {
 
 	// project status
 	projectStatusCmd.Flags().String("output", "table", "Output format: table or json")
+
+	// project archive / unarchive
+	projectArchiveCmd.Flags().String("output", "table", "Output format: table or json")
+	projectUnarchiveCmd.Flags().String("output", "table", "Output format: table or json")
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +232,10 @@ func runProjectList(cmd *cobra.Command, _ []string) error {
 	if v, _ := cmd.Flags().GetString("status"); v != "" {
 		params.Set("status", v)
 	}
+	includeArchived, _ := cmd.Flags().GetBool("include-archived")
+	if includeArchived {
+		params.Set("include_archived", "true")
+	}
 
 	path := "/api/projects"
 	if len(params) > 0 {
@@ -232,6 +257,11 @@ func runProjectList(cmd *cobra.Command, _ []string) error {
 	fullID, _ := cmd.Flags().GetBool("full-id")
 	actors := loadActorDisplayLookup(ctx, client)
 	headers := []string{"ID", "TITLE", "STATUS", "LEAD", "CREATED"}
+	// The ARCHIVED column only earns its width when the list actually mixes
+	// archived and active rows, which is exactly --include-archived.
+	if includeArchived {
+		headers = append(headers, "ARCHIVED")
+	}
 	rows := make([][]string, 0, len(projectsRaw))
 	for _, raw := range projectsRaw {
 		p, ok := raw.(map[string]any)
@@ -243,13 +273,21 @@ func runProjectList(cmd *cobra.Command, _ []string) error {
 		if len(created) >= 10 {
 			created = created[:10]
 		}
-		rows = append(rows, []string{
+		row := []string{
 			displayID(strVal(p, "id"), fullID),
 			strVal(p, "title"),
 			strVal(p, "status"),
 			lead,
 			created,
-		})
+		}
+		if includeArchived {
+			archived := strVal(p, "archived_at")
+			if len(archived) >= 10 {
+				archived = archived[:10]
+			}
+			row = append(row, archived)
+		}
+		rows = append(rows, row)
 	}
 	cli.PrintTable(os.Stdout, headers, rows)
 	return nil
@@ -518,6 +556,51 @@ func runProjectStatus(cmd *cobra.Command, args []string) error {
 		return cli.PrintJSON(os.Stdout, result)
 	}
 	return nil
+}
+
+// runProjectArchiveToggle backs both `project archive` and
+// `project unarchive`: same resolve → POST → report shape, differing only in
+// the endpoint and the confirmation wording.
+func runProjectArchiveToggle(cmd *cobra.Command, args []string, action, pastTense string) error {
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	projectRef, err := resolveProjectID(ctx, client, args[0])
+	if err != nil {
+		return fmt.Errorf("resolve project: %w", err)
+	}
+
+	var result map[string]any
+	if err := client.PostJSON(ctx, "/api/projects/"+projectRef.ID+"/"+action, nil, &result); err != nil {
+		return fmt.Errorf("%s project: %w", action, err)
+	}
+
+	title := strVal(result, "title")
+	if title == "" {
+		title = projectRef.Display
+	}
+	fmt.Fprintf(os.Stderr, "Project %s %s.\n", title, pastTense)
+
+	output, _ := cmd.Flags().GetString("output")
+	if output == "json" {
+		return cli.PrintJSON(os.Stdout, result)
+	}
+	return nil
+}
+
+func runProjectArchive(cmd *cobra.Command, args []string) error {
+	return runProjectArchiveToggle(cmd, args, "archive", "archived")
+}
+
+// The endpoint is /restore (it mirrors the issue restore route); the command
+// is `unarchive` because that reads as the inverse of `archive` on the CLI.
+func runProjectUnarchive(cmd *cobra.Command, args []string) error {
+	return runProjectArchiveToggle(cmd, args, "restore", "restored")
 }
 
 // ---------------------------------------------------------------------------

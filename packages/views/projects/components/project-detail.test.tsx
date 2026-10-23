@@ -9,7 +9,10 @@ import { ProjectDetail } from "./project-detail";
 
 const mocks = vi.hoisted(() => ({
   role: "admin",
+  archivedAt: null as string | null,
   deleteProject: vi.fn(),
+  archiveProject: vi.fn(),
+  restoreProject: vi.fn(),
   push: vi.fn(),
   recordVisit: vi.fn(),
   toastSuccess: vi.fn(),
@@ -19,7 +22,10 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: (options: { queryKey?: readonly unknown[] }) => {
     switch (options.queryKey?.[0]) {
       case "project-detail":
-        return { data: PROJECT, isLoading: false };
+        return {
+          data: { ...PROJECT, archived_at: mocks.archivedAt },
+          isLoading: false,
+        };
       case "members":
         return {
           data: [{ user_id: "user-1", name: "User One", role: mocks.role }],
@@ -41,6 +47,8 @@ vi.mock("@multica/core/projects/queries", () => ({
 vi.mock("@multica/core/projects/mutations", () => ({
   useUpdateProject: () => ({ mutate: vi.fn() }),
   useDeleteProject: () => ({ mutate: mocks.deleteProject }),
+  useArchiveProject: () => ({ mutate: mocks.archiveProject }),
+  useRestoreProject: () => ({ mutate: mocks.restoreProject }),
 }));
 
 vi.mock("@multica/core/pins", () => ({
@@ -263,6 +271,8 @@ const PROJECT: Project = {
   due_date: null,
   created_at: "2026-06-01T00:00:00Z",
   updated_at: "2026-06-01T00:00:00Z",
+  archived_at: null,
+  archived_by: null,
   issue_count: 3,
   done_count: 1,
   resource_count: 0,
@@ -287,7 +297,10 @@ function renderProjectDetail() {
 
 beforeEach(() => {
   mocks.role = "admin";
+  mocks.archivedAt = null;
   mocks.deleteProject.mockReset();
+  mocks.archiveProject.mockReset();
+  mocks.restoreProject.mockReset();
   mocks.push.mockReset();
   mocks.recordVisit.mockReset();
   mocks.toastSuccess.mockReset();
@@ -328,5 +341,50 @@ describe("ProjectDetail project deletion", () => {
     expect(
       screen.queryByRole("button", { name: "Delete project" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("ProjectDetail archive", () => {
+  it("archives without a confirmation step and stays on the page", async () => {
+    const user = userEvent.setup();
+    renderProjectDetail();
+
+    await user.click(screen.getByRole("button", { name: "Archive project" }));
+
+    expect(mocks.archiveProject).toHaveBeenCalledWith(
+      PROJECT.id,
+      expect.anything(),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("swaps archive for restore and badges the title once archived", async () => {
+    const user = userEvent.setup();
+    mocks.archivedAt = "2026-10-01T00:00:00Z";
+    renderProjectDetail();
+
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Archive project" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Restore project" }));
+
+    expect(mocks.restoreProject).toHaveBeenCalledWith(
+      PROJECT.id,
+      expect.anything(),
+    );
+  });
+
+  // Archiving is reversible, so unlike delete it is not admin-gated.
+  it("offers archiving to regular members too", () => {
+    mocks.role = "member";
+
+    renderProjectDetail();
+
+    expect(
+      screen.getByRole("button", { name: "Archive project" }),
+    ).toBeInTheDocument();
   });
 });

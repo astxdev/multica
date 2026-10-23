@@ -346,7 +346,10 @@ func fetchProjectCandidates(ctx context.Context, client *cli.APIClient) ([]idCan
 	if client.WorkspaceID == "" {
 		return nil, fmt.Errorf("workspace_id is required to resolve project id prefixes")
 	}
-	params := url.Values{"workspace_id": {client.WorkspaceID}}
+	// include_archived: an archived project is still addressable by id (GET,
+	// unarchive, resource list all work on it), so prefix resolution must not
+	// be the one place that stops finding it.
+	params := url.Values{"workspace_id": {client.WorkspaceID}, "include_archived": {"true"}}
 	var result map[string]any
 	if err := client.GetJSON(ctx, "/api/projects?"+params.Encode(), &result); err != nil {
 		return nil, err

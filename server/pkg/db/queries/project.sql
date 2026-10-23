@@ -1,8 +1,12 @@
 -- name: ListProjects :many
+-- Archived projects are hidden unless include_archived is true: the Projects
+-- view ships the toggle, every other caller (pickers, filters, autopilots)
+-- passes false so archived projects stop being offered as targets.
 SELECT * FROM project
 WHERE workspace_id = $1
   AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
   AND (sqlc.narg('priority')::text IS NULL OR priority = sqlc.narg('priority'))
+  AND (sqlc.arg('include_archived')::boolean OR archived_at IS NULL)
 ORDER BY created_at DESC;
 
 -- name: GetProject :one
@@ -48,6 +52,20 @@ UPDATE project SET
     due_date = sqlc.narg('due_date'),
     updated_at = now()
 WHERE id = $1
+RETURNING *;
+
+-- name: ArchiveProject :one
+-- archived_at IS NOT NULL means the project is hidden from the default
+-- Projects view and from every project picker (see ListProjects); same
+-- convention as issue.archived_at. Purely a visibility change: issues keep
+-- their project_id and the project page stays reachable by id.
+UPDATE project SET archived_at = now(), archived_by = $2, updated_at = now()
+WHERE id = $1 AND workspace_id = $3
+RETURNING *;
+
+-- name: RestoreProject :one
+UPDATE project SET archived_at = NULL, archived_by = NULL, updated_at = now()
+WHERE id = $1 AND workspace_id = $2
 RETURNING *;
 
 -- name: DeleteProject :exec

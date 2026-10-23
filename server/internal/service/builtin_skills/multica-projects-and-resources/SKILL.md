@@ -42,6 +42,9 @@ multica project update <project-id> --title "<title>" --output json
 multica project update <project-id> --due-date 2026-04-15 --output json
 multica project update <project-id> --start-date "" --output json   # clear the start date
 multica project status <project-id> in_progress --output json
+multica project archive <project-id> --output json
+multica project unarchive <project-id> --output json
+multica project list --include-archived --output json
 multica project resource list <project-id> --output json
 multica project resource add <project-id> --type github_repo --url <github-url> --output json
 multica project resource add <project-id> --type github_repo --url <github-url> --ref <branch-or-sha> --output json
@@ -54,6 +57,29 @@ multica project resource remove <project-id> <resource-id> --output json
 For `github_repo`, non-JSON `--ref` sets `resource_ref.ref`, the default checkout branch/tag/SHA for future tasks in that project. JSON `--ref '<json>'` remains the escape hatch for full payloads or resource types not covered by shortcuts.
 
 `--start-date` / `--due-date` are optional calendar days (`YYYY-MM-DD`, like issue dates). On `project update`, pass an empty string (`--start-date ""`) to clear a date; an unset flag leaves it untouched.
+
+## Archived projects
+
+Archiving parks a finished project without deleting it. `archived_at` is
+non-null while archived, and the project drops out of `project list`, every
+project picker, and project search — but stays fully readable by id, keeps its
+issues and resources, and comes back with `multica project unarchive`.
+
+So when a project you expect is missing from `project list`, check
+`--include-archived` before concluding it was deleted:
+
+```bash
+multica project list --include-archived --output json
+```
+
+`project get`, `project resource list`, and `project unarchive` all accept an
+archived project's id (including an id prefix). Archiving is reversible and
+needs only workspace membership, unlike `project delete`, which is destructive
+and stays owner/admin.
+
+Prefer archiving over deleting when the user says a project is done/old but may
+be needed again. Reach for `--status completed` instead when they only want to
+mark it finished while keeping it in the list.
 
 ## Referring to a project in a comment
 
@@ -94,6 +120,10 @@ is task-local checkout state.
 
 ## Side effects
 
-Project create/update/delete/status and project resource add/update/remove mutate durable workspace state and affect future tasks. Ask before changing `local_directory` unless the user explicitly requested that exact local path.
+Project create/update/delete/status/archive/unarchive and project resource add/update/remove mutate durable workspace state and affect future tasks. Ask before changing `local_directory` unless the user explicitly requested that exact local path.
+
+Archiving is workspace-visible: it removes the project from everyone's Projects
+view and pickers, not just yours. It is reversible, so it does not need the
+confirmation `delete` does, but do not archive a project the user did not name.
 
 More source-backed details: `references/projects-and-resources-source-map.md`.

@@ -2782,9 +2782,15 @@ export class ApiClient {
   }
 
   // Projects
-  async listProjects(params?: { status?: string }): Promise<ListProjectsResponse> {
+  // The server hides archived projects unless include_archived is set, so the
+  // default call is the "active projects" list every picker wants.
+  async listProjects(params?: {
+    status?: string;
+    include_archived?: boolean;
+  }): Promise<ListProjectsResponse> {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
+    if (params?.include_archived) search.set("include_archived", "true");
     return this.fetch(`/api/projects?${search}`);
   }
 
@@ -2808,6 +2814,14 @@ export class ApiClient {
 
   async deleteProject(id: string): Promise<void> {
     await this.fetch(`/api/projects/${id}`, { method: "DELETE" });
+  }
+
+  async archiveProject(id: string): Promise<Project> {
+    return this.fetch(`/api/projects/${id}/archive`, { method: "POST" });
+  }
+
+  async restoreProject(id: string): Promise<Project> {
+    return this.fetch(`/api/projects/${id}/restore`, { method: "POST" });
   }
 
   // Project resources

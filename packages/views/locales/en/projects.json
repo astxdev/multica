@@ -129,6 +129,16 @@
     "confirm": "Delete",
     "cancel": "Cancel"
   },
+  "archive": {
+    "archive_action": "Archive project",
+    "restore_action": "Restore project",
+    "archived_badge": "Archived",
+    "show_archived": "Show archived",
+    "toast_archived": "Project archived",
+    "toast_archive_failed": "Failed to archive project",
+    "toast_restored": "Project restored",
+    "toast_restore_failed": "Failed to restore project"
+  },
   "picker": {
     "no_project": "No project",
     "empty": "No projects yet",

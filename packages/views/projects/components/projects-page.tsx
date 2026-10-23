@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowDown,
   ArrowUp,
   ChevronDown,
@@ -109,6 +111,7 @@ import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 import { useFormatRelativeDate } from "./labels";
 import { ProjectStatusBadge, ProjectPriorityBadge } from "./project-badge";
 import { ProjectLeadPicker } from "./project-lead-picker";
+import { useProjectArchiveActions } from "./use-project-archive-actions";
 
 // Sort order maps for the enum columns (header sort needs a total order).
 const PRIORITY_ORDER: Record<ProjectPriority, number> = {
@@ -217,6 +220,18 @@ function ProgressRing({ project }: { project: Project }) {
   );
 }
 
+// Archived projects only ever render while "Show archived" is on, where the
+// list mixes active and parked rows — the badge is what tells them apart.
+function ArchivedBadge() {
+  const { t } = useT("projects");
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-micro text-muted-foreground">
+      <Archive className="size-3" />
+      {t(($) => $.archive.archived_badge)}
+    </span>
+  );
+}
+
 // Compact rows own whole-row navigation; callers stop propagation around this
 // menu so action clicks do not bubble into the rowLink handler.
 function ProjectRowActions({
@@ -235,7 +250,9 @@ function ProjectRowActions({
   const createPin = useCreatePin();
   const deletePin = useDeletePin();
   const deleteProject = useDeleteProject();
+  const { archiveProject, restoreProject } = useProjectArchiveActions();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const isArchived = !!project.archived_at;
 
   const togglePin = () => {
     if (pinned) deletePin.mutate({ itemType: "project", itemId: project.id });
@@ -278,6 +295,18 @@ function ProjectRowActions({
             )}
             {pinned ? t(($) => $.page.unpin) : t(($) => $.page.pin)}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {isArchived ? (
+            <DropdownMenuItem onClick={() => restoreProject(project.id)}>
+              <ArchiveRestore className="size-3.5" />
+              {t(($) => $.archive.restore_action)}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => archiveProject(project.id)}>
+              <Archive className="size-3.5" />
+              {t(($) => $.archive.archive_action)}
+            </DropdownMenuItem>
+          )}
           {canDelete && (
             <>
               <DropdownMenuSeparator />
@@ -397,6 +426,7 @@ function ProjectTableRow({
         <span className="min-w-0 truncate text-body font-medium">
           {project.title}
         </span>
+        {project.archived_at && <ArchivedBadge />}
       </ListGridCell>
 
       {/* status — core column, always visible */}
@@ -606,6 +636,7 @@ function ProjectCard({
           >
             <ProjectIcon project={project} size="sm" />
             <h3 className="truncate text-body font-medium">{project.title}</h3>
+            {project.archived_at && <ArchivedBadge />}
           </AppLink>
           <ProjectRowActions project={project} pinned={pinned} canDelete={canDelete} />
           <ProjectStatusBadge project={project} handleUpdate={handleUpdate} triggerClassName="shrink-0" />
@@ -708,10 +739,18 @@ function ProjectBatchToolbar({
   const { t } = useT("projects");
   const createPin = useCreatePin();
   const deleteProject = useDeleteProject();
+  const { archiveProject, restoreProject } = useProjectArchiveActions();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (rows.length === 0) return null;
   const anyUnpinned = rows.some((p) => !pinnedIds.has(p.id));
+  // One button, not two: a mixed selection archives whatever is still active,
+  // and a selection of only archived rows restores instead. Each row is its
+  // own request — same per-row loop the Delete action already uses, since the
+  // server has no batch project endpoint.
+  const archivable = rows.filter((p) => !p.archived_at);
+  const restorable = rows.filter((p) => p.archived_at);
+  const showRestore = archivable.length === 0 && restorable.length > 0;
 
   return (
     <>
@@ -744,6 +783,31 @@ function ProjectBatchToolbar({
           >
             <Pin className="mr-1 size-3.5" />
             {t(($) => $.page.pin)}
+          </Button>
+        )}
+        {showRestore ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              for (const p of restorable) restoreProject(p.id);
+              onClear();
+            }}
+          >
+            <ArchiveRestore className="mr-1 size-3.5" />
+            {t(($) => $.archive.restore_action)}
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              for (const p of archivable) archiveProject(p.id);
+              onClear();
+            }}
+          >
+            <Archive className="mr-1 size-3.5" />
+            {t(($) => $.archive.archive_action)}
           </Button>
         )}
         {canDelete && (
@@ -806,6 +870,8 @@ export function ProjectsPage() {
   const sortDirection = useProjectViewStore((s) => s.sortDirection);
   const hiddenColumns = useProjectViewStore((s) => s.hiddenColumns);
   const filters = useProjectViewStore((s) => s.filters);
+  const showArchived = useProjectViewStore((s) => s.showArchived);
+  const toggleShowArchived = useProjectViewStore((s) => s.toggleShowArchived);
   const toggleSort = useProjectViewStore((s) => s.toggleSort);
   const setSortField = useProjectViewStore((s) => s.setSortField);
   const setSortDirection = useProjectViewStore((s) => s.setSortDirection);
@@ -815,7 +881,11 @@ export function ProjectsPage() {
   const isCompact = viewMode === "compact";
   const isColVisible = (key: ProjectColumnKey) => !hiddenColumns.includes(key);
 
-  const { data: projects = [], isLoading } = useQuery(projectListOptions(wsId));
+  // "Show archived" is served by a different endpoint shape, not a client-side
+  // filter: the default list omits archived projects entirely.
+  const { data: projects = [], isLoading } = useQuery(
+    projectListOptions(wsId, { includeArchived: showArchived }),
+  );
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: pins = [] } = useQuery({
     ...pinListOptions(wsId, currentUser?.id ?? ""),
@@ -1095,6 +1165,21 @@ export function ProjectsPage() {
                       ))}
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
+
+                  {/* Show archived — a display toggle rather than a filter
+                      dimension (it changes what the server returns, not how
+                      the result is narrowed), so it sits outside
+                      countActiveFilters and gets its own separator. */}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={showArchived}
+                    onCheckedChange={toggleShowArchived}
+                    className={FILTER_ITEM_CLASS}
+                  >
+                    <HoverCheck checked={showArchived} />
+                    <Archive className="size-3.5 text-muted-foreground" />
+                    {t(($) => $.archive.show_archived)}
+                  </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 

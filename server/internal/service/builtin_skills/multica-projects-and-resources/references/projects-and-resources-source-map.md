@@ -1,12 +1,13 @@
 # Projects and resources source map
 
-- `server/cmd/multica/cmd_project.go` registers project `list`, `get`, `create`, `update`, `delete`, and `status`.
+- `server/cmd/multica/cmd_project.go` registers project `list`, `get`, `create`, `update`, `delete`, `status`, `archive`, and `unarchive`.
 - The same file registers `project resource list/add/update/remove`.
 - `project create --repo` attaches `github_repo` resources during project creation.
 - `project create` / `project update` accept `--start-date` / `--due-date` (calendar days, `YYYY-MM-DD`), mapping to the project `start_date` / `due_date` columns (migration `166_project_dates`); an empty `--start-date ""`/`--due-date ""` on update clears the date, mirroring the issue date flags in `cmd_issue.go`.
 - `project resource add` supports shortcuts for `github_repo` (`--url`, non-JSON `--ref` for checkout ref, `--default-branch-hint`) and `local_directory` (`--local-path`, `--daemon-id`, `--ref-label`), or generic JSON `--ref '<json>'`.
 - `project resource update` merges shortcut edits with existing `resource_ref` so a partial edit does not clobber required fields; non-JSON `--ref` updates `github_repo.resource_ref.ref`.
 - `server/cmd/server/router.go` exposes `/api/projects` plus `/api/projects/{projectId}/resources` routes.
+- Project archiving (migrations `304_project_archive`, `305_project_archived_index`): `project.archived_at` / `archived_by` follow the `issue.archived_at` convention. `ArchiveProject` / `RestoreProject` (`server/pkg/db/queries/project.sql`) back `POST /api/projects/{id}/archive` and `/restore` (`ArchiveProject` / `RestoreProject` in `server/internal/handler/project.go`), both membership-gated — only `DeleteProject` requires owner/admin. Re-archiving or re-restoring returns 409. `ListProjects` hides archived rows unless `include_archived=true`, which the CLI sends for `project list --include-archived` and unconditionally in `fetchProjectCandidates` (`cmd_id_resolver.go`) so id-prefix resolution still reaches an archived project; `buildProjectSearchQuery` excludes them outright, so project search never returns one. The CLI verb is `unarchive` while the route stays `/restore`. Clients use `projectKeys.listWithArchived` (`packages/core/projects/queries.ts`), nested under `projectKeys.list` so one prefix invalidation refreshes both variants while pickers keep reading the archived-free list.
 - `server/pkg/db/queries/project_resource.sql` is the CRUD query surface for `project_resource` rows.
 - Project resources are written into `.multica/project/resources.json` for agent workdirs.
 - `github_repo.resource_ref.ref` is lifted into daemon `RepoData.Ref` by `server/internal/handler/daemon.go`; `server/internal/daemon/daemon.go` stores it per task, and `server/internal/daemon/health.go` uses it as the default `/repo/checkout` ref when the checkout request does not explicitly pass one.
