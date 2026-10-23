@@ -10,7 +10,8 @@
     "backlog": "백로그",
     "todo": "할 일",
     "in_progress": "진행 중",
-    "in_review": "리뷰 중",
+    "in_review_internal": "내부 리뷰 중",
+    "in_review": "외부 리뷰 중",
     "done": "완료",
     "blocked": "막힘",
     "cancelled": "취소됨"

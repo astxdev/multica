@@ -1,10 +1,15 @@
 import type { Label } from "./label";
 import type { IssuePropertyValues } from "./property";
 
+// Review is two stages, in flow order: `in_review_internal` is review by the
+// team, `in_review` is review by whoever asked for the work. `in_review` keeps
+// its original value — it is the string agent briefings, built-in skills, and
+// saved issue-view filters already store.
 export type IssueStatus =
   | "backlog"
   | "todo"
   | "in_progress"
+  | "in_review_internal"
   | "in_review"
   | "done"
   | "blocked"

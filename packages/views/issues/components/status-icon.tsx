@@ -92,6 +92,15 @@ function InProgressIcon() {
   return <ProgressCircle progress={0.5} />;
 }
 
+// The two review stages sit on the same pie ramp as the rest of the flow
+// (in_progress 0.5 -> done 1), so the fill alone says how far along the issue
+// is: internal review is one eighth past in progress, external review one
+// eighth past that. Which review it is reads from the color — purple vs green
+// — but the ramp means the icons are still ordered without it.
+function InReviewInternalIcon() {
+  return <ProgressCircle progress={0.625} />;
+}
+
 function InReviewIcon() {
   return <ProgressCircle progress={0.75} />;
 }
@@ -147,6 +156,7 @@ const STATUS_RENDERERS: Record<IssueStatus, () => React.ReactNode> = {
   backlog: BacklogIcon,
   todo: TodoIcon,
   in_progress: InProgressIcon,
+  in_review_internal: InReviewInternalIcon,
   in_review: InReviewIcon,
   done: DoneIcon,
   blocked: BlockedIcon,
