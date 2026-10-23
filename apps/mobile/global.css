@@ -52,6 +52,7 @@
     --success: 142 71% 45%;
     --warning: 48 89% 47%;
     --info: 217 91% 60%;
+    --review-internal: 271 91% 65%;
     --priority: 25 95% 53%;
     --code-surface: 240 4% 92%;
 
@@ -118,6 +119,7 @@
     --success: 142 71% 45%;
     --warning: 48 89% 47%;
     --info: 217 91% 60%;
+    --review-internal: 271 91% 65%;
     --priority: 25 95% 53%;
     /* code-surface is the ONE exception that needs a real dark value —
      * the light value (240 4% 92%) is near-white and would render code

@@ -58,6 +58,7 @@ module.exports = {
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
         info: "hsl(var(--info))",
+        "review-internal": "hsl(var(--review-internal))",
         priority: "hsl(var(--priority))",
         "code-surface": "hsl(var(--code-surface))",
         // Surface elevation scale — 5-tier ladder above page bg, sandwiching
