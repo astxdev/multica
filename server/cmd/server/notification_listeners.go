@@ -21,13 +21,14 @@ type mention struct {
 
 // statusLabels maps DB status values to human-readable labels for notifications.
 var statusLabels = map[string]string{
-	"backlog":     "Backlog",
-	"todo":        "Todo",
-	"in_progress": "In Progress",
-	"in_review":   "In Review",
-	"done":        "Done",
-	"blocked":     "Blocked",
-	"cancelled":   "Cancelled",
+	"backlog":            "Backlog",
+	"todo":               "Todo",
+	"in_progress":        "In Progress",
+	"in_review_internal": "In Review - Internal",
+	"in_review":          "In Review - External",
+	"done":               "Done",
+	"blocked":            "Blocked",
+	"cancelled":          "Cancelled",
 }
 
 // priorityLabels maps DB priority values to human-readable labels for notifications.
@@ -88,18 +89,21 @@ var delegatedAlwaysNotifTypes = map[string]bool{
 // for a delegated subscriber — someone whose agent filed this issue on their
 // behalf.
 //
-// in_review is the important one: in Multica's agent flow an agent parks
-// completed work in in_review, so that is the dominant "this needs you now"
-// transition, not done.
+// The two review statuses are the important ones: in Multica's agent flow an
+// agent parks completed work in review, so that is the dominant "this needs you
+// now" transition, not done. in_review_internal is review by the team before
+// anything reaches the requester, which is just as much a handoff asking for
+// someone's attention.
 //
 // Everything absent from this set is churn for someone who never asked for this
 // specific issue: routine forward progress (todo, in_progress), deliberate
 // parking (backlog), comment traffic, and field edits.
 var delegatedStatusNotify = map[string]bool{
-	"in_review": true,
-	"done":      true,
-	"cancelled": true,
-	"blocked":   true,
+	"in_review_internal": true,
+	"in_review":          true,
+	"done":               true,
+	"cancelled":          true,
+	"blocked":            true,
 }
 
 // deliverToSubscriber reports whether a subscriber row should receive this
@@ -198,13 +202,14 @@ func loadUserPrefs(
 // the issue as "the user no longer needs to triage past failures." When a
 // status change lands on one of these, any pre-existing task_failed inbox
 // rows for the issue are archived so the inbox stays a fresh-signal surface.
-// `in_review` is included because in Multica's agent flow that's the most
-// reliable "work delivered" handoff — and a status flip back to in_progress
-// will simply produce new task_failed rows that surface normally.
+// Both review statuses are included because in Multica's agent flow review is
+// the most reliable "work delivered" handoff — and a status flip back to
+// in_progress will simply produce new task_failed rows that surface normally.
 var terminalStatusForTaskFailedDismiss = map[string]bool{
-	"in_review": true,
-	"done":      true,
-	"cancelled": true,
+	"in_review_internal": true,
+	"in_review":          true,
+	"done":               true,
+	"cancelled":          true,
 }
 
 // archiveStaleTaskFailedInbox archives all task_failed inbox rows for the

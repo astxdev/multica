@@ -82,7 +82,7 @@ type IssueResponse struct {
 // the issue table. Write handlers pre-validate these so callers get a clean
 // 400 with the allowed values instead of a database CHECK violation bubbling
 // up as a 500.
-var validIssueStatuses = []string{"backlog", "todo", "in_progress", "in_review", "done", "blocked", "cancelled"}
+var validIssueStatuses = []string{"backlog", "todo", "in_progress", "in_review_internal", "in_review", "done", "blocked", "cancelled"}
 var validIssuePriorities = []string{"urgent", "high", "medium", "low", "none"}
 
 func validateIssueEnum(w http.ResponseWriter, field, value string, allowed []string) bool {
@@ -544,13 +544,14 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 	// Status priority: active issues first
 	statusRank := `CASE i.status
 		WHEN 'in_progress' THEN 0
-		WHEN 'in_review' THEN 1
-		WHEN 'todo' THEN 2
-		WHEN 'blocked' THEN 3
-		WHEN 'backlog' THEN 4
-		WHEN 'done' THEN 5
-		WHEN 'cancelled' THEN 6
-		ELSE 7
+		WHEN 'in_review_internal' THEN 1
+		WHEN 'in_review' THEN 2
+		WHEN 'todo' THEN 3
+		WHEN 'blocked' THEN 4
+		WHEN 'backlog' THEN 5
+		WHEN 'done' THEN 6
+		WHEN 'cancelled' THEN 7
+		ELSE 8
 	END`
 
 	// Cancelled issues are abandoned work. statusRank alone cannot keep them
@@ -1001,7 +1002,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		case "position", "title", "created_at", "updated_at", "start_date", "due_date":
 			sortCol = s
 		case "status":
-			sortCol = "CASE i.status WHEN 'backlog' THEN 0 WHEN 'todo' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'in_review' THEN 3 WHEN 'done' THEN 4 WHEN 'blocked' THEN 5 WHEN 'cancelled' THEN 6 ELSE 7 END"
+			sortCol = "CASE i.status WHEN 'backlog' THEN 0 WHEN 'todo' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'in_review_internal' THEN 3 WHEN 'in_review' THEN 4 WHEN 'done' THEN 5 WHEN 'blocked' THEN 6 WHEN 'cancelled' THEN 7 ELSE 8 END"
 			sortIsExpr = true
 		case "priority":
 			sortCol = "CASE i.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END"
@@ -1724,7 +1725,7 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 		case "position", "title", "created_at", "updated_at", "start_date", "due_date":
 			sortCol = s
 		case "status":
-			sortCol = "CASE i.status WHEN 'backlog' THEN 0 WHEN 'todo' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'in_review' THEN 3 WHEN 'done' THEN 4 WHEN 'blocked' THEN 5 WHEN 'cancelled' THEN 6 ELSE 7 END"
+			sortCol = "CASE i.status WHEN 'backlog' THEN 0 WHEN 'todo' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'in_review_internal' THEN 3 WHEN 'in_review' THEN 4 WHEN 'done' THEN 5 WHEN 'blocked' THEN 6 WHEN 'cancelled' THEN 7 ELSE 8 END"
 			sortIsExpr = true
 		case "priority":
 			sortCol = "CASE i.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END"
