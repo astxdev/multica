@@ -127,6 +127,8 @@ function issueIconColor(status: IssueStatus): string {
   switch (status) {
     case "in_progress":
       return "text-warning";
+    case "in_review_internal":
+      return "text-review-internal";
     case "in_review":
       return "text-success";
     case "done":

@@ -504,7 +504,7 @@ Pass `--to-id <uuid>` to assign by canonical UUID (mutually exclusive with `--to
 multica issue status <id> in_progress
 ```
 
-Valid statuses: `backlog`, `todo`, `in_progress`, `in_review`, `done`, `blocked`, `cancelled`.
+Valid statuses: `backlog`, `todo`, `in_progress`, `in_review_internal`, `in_review`, `done`, `blocked`, `cancelled`.
 
 ### Comments
 

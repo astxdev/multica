@@ -294,6 +294,7 @@ const STATUS_BAR_BG: Record<IssueStatus, string> = {
   backlog: "bg-muted-foreground/60",
   todo: "bg-muted-foreground/70",
   in_progress: "bg-warning",
+  in_review_internal: "bg-review-internal",
   in_review: "bg-success",
   done: "bg-info",
   blocked: "bg-destructive",

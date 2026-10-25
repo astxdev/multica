@@ -132,6 +132,8 @@ and is hidden from the PR list.
 | `StartTask` / `CompleteTask` do not write issue status (agent CLI owns progress) | `server/internal/service/task.go` (`StartTask` / `CompleteTask` comments) | new citation |
 | Assignment brief: ordinary agent `in_progress` then `in_review`; squad leader `in_progress` only on first dispatch | `server/internal/daemon/execenv/runtime_config_sections.go` (`writeWorkflowAssignment`) | new citation |
 | Failed task may roll `in_progress` → `todo` when no active task remains | `server/internal/service/task.go` (`HandleFailedTasks`) | new citation |
+| Two review statuses — `in_review_internal` (team) then `in_review` (requester) — both accepted by the API and the CLI | `server/internal/handler/issue.go` (`validIssueStatuses`), `server/cmd/multica/cmd_issue.go` (`validIssueStatuses`), CHECK widened in `server/migrations/306_issue_status_in_review_internal.up.sql` | new citation |
+| `in_review_internal` shares `in_review`'s side effects: finalizes an autopilot run, notifies delegated subscribers, retires stale `task_failed` inbox rows | `server/internal/service/autopilot.go` (`SyncRunFromIssue`), `server/cmd/server/autopilot_listeners.go`, `server/cmd/server/notification_listeners.go` (`delegatedStatusNotify`, `terminalStatusForTaskFailedDismiss`) | new citation |
 
 Creation with `--status todo` (or any non-backlog status) on an agent-assigned
 issue fires the agent immediately; `--status backlog` parks it with the assignee

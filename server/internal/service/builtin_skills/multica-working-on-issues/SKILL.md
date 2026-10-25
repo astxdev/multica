@@ -191,6 +191,12 @@ on it. These are the contracts, not advice:
   the overall goal is met.
 - **`in_review`** is an accepted issue status. Some workflows use it while a PR
   is open and awaiting review; moving to it is an explicit mutation.
+- **`in_review_internal`** is the other half of review: review by the team,
+  before the result is shown to whoever asked for the work. It carries the same
+  contracts as `in_review` — it finalizes an autopilot run, it notifies
+  delegated subscribers, and it retires stale run-failure inbox rows. It is not
+  the default delivery target: unless the issue asks for an internal pass,
+  deliver to `in_review`.
 - **`done`** on a child issue posts a system comment on its parent. If a PR
   carries close intent (`Closes MUL-XXXX`), it advances the issue to `done`
   itself on merge — you do not also need to flip it manually.

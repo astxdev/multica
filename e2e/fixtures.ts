@@ -23,6 +23,7 @@ export type TestIssueStatus =
   | "backlog"
   | "todo"
   | "in_progress"
+  | "in_review_internal"
   | "in_review"
   | "done"
   | "blocked"

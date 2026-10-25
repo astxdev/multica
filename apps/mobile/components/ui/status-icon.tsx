@@ -26,6 +26,7 @@ const STATUS_COLOR: Record<IssueStatus, string> = {
   backlog: "#71717a", // muted-foreground
   todo: "#71717a",
   in_progress: "#eab308", // warning
+  in_review_internal: "#a855f7", // review-internal
   in_review: "#22c55e", // success
   done: "#3b82f6", // info
   blocked: "#dc2626", // destructive
@@ -143,6 +144,8 @@ export function StatusIcon({
         <ProgressCircle progress={0} color={color} />
       ) : status === "in_progress" ? (
         <ProgressCircle progress={0.5} color={color} />
+      ) : status === "in_review_internal" ? (
+        <ProgressCircle progress={0.625} color={color} />
       ) : status === "in_review" ? (
         <ProgressCircle progress={0.75} color={color} />
       ) : status === "done" ? (
