@@ -182,21 +182,23 @@ on it. These are the contracts, not advice:
 - **`backlog`** parks an agent-assigned issue: the assignee is set but no task
   fires. Moving `backlog → todo` (or any non-done/non-cancelled status) enqueues
   the assigned agent then.
-- **`in_progress` / `in_review` on assignment runs** are agent-managed CLI
-  mutations, not `StartTask` / `CompleteTask` side effects. The assignment
+- **`in_progress` / `in_review_internal` on assignment runs** are agent-managed
+  CLI mutations, not `StartTask` / `CompleteTask` side effects. The assignment
   runtime brief asks ordinary agents for `todo`/`backlog` → `in_progress` then
-  `in_review` when they have delivered. Squad leaders share the opening
+  `in_review_internal` when they have delivered. Squad leaders share the opening
   `in_progress` step on the first assignment turn, keep the parent there while
-  members work, and only move to `in_review` when a later re-trigger confirms
-  the overall goal is met.
-- **`in_review`** is an accepted issue status. Some workflows use it while a PR
-  is open and awaiting review; moving to it is an explicit mutation.
-- **`in_review_internal`** is the other half of review: review by the team,
-  before the result is shown to whoever asked for the work. It carries the same
-  contracts as `in_review` — it finalizes an autopilot run, it notifies
-  delegated subscribers, and it retires stale run-failure inbox rows. It is not
-  the default delivery target: unless the issue asks for an internal pass,
-  deliver to `in_review`.
+  members work, and only move to `in_review_internal` when a later re-trigger
+  confirms the overall goal is met.
+- **`in_review_internal`** is review by the team, before the result is shown to
+  whoever asked for the work, and it is **the delivery target for every agent**.
+  It carries the same contracts as `in_review` — it finalizes an autopilot run,
+  it notifies delegated subscribers, and it retires stale run-failure inbox
+  rows.
+- **`in_review`** is the other half of review: review by whoever asked for the
+  work. It is reached by the team promoting an issue out of
+  `in_review_internal`, so an agent moves an issue here only when the issue or a
+  comment explicitly asks for it. Some workflows also use it while a PR is open
+  and awaiting review; moving to it is an explicit mutation.
 - **`done`** on a child issue posts a system comment on its parent. If a PR
   carries close intent (`Closes MUL-XXXX`), it advances the issue to `done`
   itself on merge — you do not also need to flip it manually.

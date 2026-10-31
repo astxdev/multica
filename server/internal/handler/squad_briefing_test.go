@@ -15,8 +15,8 @@ import (
 
 // TestSquadOperatingProtocolOwnsParentStatus locks the parent-issue status
 // contract: first dispatch moves todo→in_progress and stays there; only a
-// later confirmation of overall completion may advance to in_review; done is
-// left to humans / integrations.
+// later confirmation of overall completion may advance to in_review_internal;
+// in_review and done are left to humans / integrations.
 func TestSquadOperatingProtocolOwnsParentStatus(t *testing.T) {
 	protocol := squadOperatingProtocolFor(true)
 	compact := strings.Join(strings.Fields(protocol), " ")
@@ -24,8 +24,10 @@ func TestSquadOperatingProtocolOwnsParentStatus(t *testing.T) {
 		"Own the parent issue status",
 		"move the parent to `in_progress`",
 		"successful dispatch is not completion",
-		"multica issue status <issue-id> in_review",
-		"Leave `done` to a human reviewer",
+		// AST-1215: the leader delivers to internal review, never straight to
+		// the requester-facing `in_review`.
+		"multica issue status <issue-id> in_review_internal",
+		"leave `in_review` (review by whoever asked for the work) and `done` to a human reviewer",
 	} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("expected squad operating protocol to contain %q\n--- protocol ---\n%s", want, protocol)
@@ -54,7 +56,7 @@ func TestSquadOperatingProtocolScopesParentStatusOwnership(t *testing.T) {
 	// The grant must be entirely absent — not merely qualified.
 	for _, forbidden := range []string{
 		"Own the parent issue status",
-		"multica issue status <issue-id> in_review",
+		"multica issue status <issue-id> in_review_internal",
 	} {
 		if strings.Contains(compactGuest, forbidden) {
 			t.Errorf("guest-leader protocol must not contain status grant %q\n--- protocol ---\n%s", forbidden, guest)

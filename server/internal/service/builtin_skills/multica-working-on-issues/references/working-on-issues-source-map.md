@@ -130,9 +130,9 @@ and is hidden from the PR list.
 | Child → `done` notifies + wakes the parent, gated by the stage barrier | `server/internal/handler/issue_child_done.go:66` (`notifyParentOfChildDone`; doc comment at `:15`; barrier gate at `:115`) | func def `:51` |
 | Status change (incl. → `cancelled`) does NOT cancel in-flight tasks; only issue deletion does (MUL-4465) | no-cancel note in `server/internal/handler/issue.go:2652-2658` (`UpdateIssue`) and `:3170-3171` (`BatchUpdateIssues`); deletion still cancels at `:2863` (`DeleteIssue`) / `:3239` (`BatchDeleteIssues`) via `CancelTasksForIssue` (`server/internal/service/task.go:1229`) | new citation |
 | `StartTask` / `CompleteTask` do not write issue status (agent CLI owns progress) | `server/internal/service/task.go` (`StartTask` / `CompleteTask` comments) | new citation |
-| Assignment brief: ordinary agent `in_progress` then `in_review`; squad leader `in_progress` only on first dispatch | `server/internal/daemon/execenv/runtime_config_sections.go` (`writeWorkflowAssignment`) | new citation |
+| Assignment brief: ordinary agent `in_progress` then `in_review_internal`; squad leader `in_progress` only on first dispatch | `server/internal/daemon/execenv/runtime_config_sections.go` (`writeWorkflowAssignment`) | new citation |
 | Failed task may roll `in_progress` → `todo` when no active task remains | `server/internal/service/task.go` (`HandleFailedTasks`) | new citation |
-| Two review statuses — `in_review_internal` (team) then `in_review` (requester) — both accepted by the API and the CLI | `server/internal/handler/issue.go` (`validIssueStatuses`), `server/cmd/multica/cmd_issue.go` (`validIssueStatuses`), CHECK widened in `server/migrations/306_issue_status_in_review_internal.up.sql` | new citation |
+| Two review statuses — `in_review_internal` (team, the agent delivery target) then `in_review` (requester, team-promoted) — both accepted by the API and the CLI | `server/internal/handler/issue.go` (`validIssueStatuses`), `server/cmd/multica/cmd_issue.go` (`validIssueStatuses`), CHECK widened in `server/migrations/306_issue_status_in_review_internal.up.sql` | new citation |
 | `in_review_internal` shares `in_review`'s side effects: finalizes an autopilot run, notifies delegated subscribers, retires stale `task_failed` inbox rows | `server/internal/service/autopilot.go` (`SyncRunFromIssue`), `server/cmd/server/autopilot_listeners.go`, `server/cmd/server/notification_listeners.go` (`delegatedStatusNotify`, `terminalStatusForTaskFailedDismiss`) | new citation |
 
 Creation with `--status todo` (or any non-backlog status) on an agent-assigned
@@ -161,8 +161,9 @@ Advancement is agent-driven: the server only detects the closed barrier and
 wakes the parent assignee. Promoting the next stage's `backlog` sub-issues to
 `todo` is the woken agent's decision, not a server side effect. When the woken
 assignee (often a squad leader) decides the parent is complete, the system
-comment explicitly asks for `multica issue status <parent-id> in_review` —
-comment-triggered runs otherwise must not change status unless asked.
+comment explicitly asks for `multica issue status <parent-id>
+in_review_internal` — comment-triggered runs otherwise must not change status
+unless asked.
 
 ## Metadata CLI
 

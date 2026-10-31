@@ -15,7 +15,7 @@ import (
 // other: the squad briefing (server-side, appended to the leader's
 // Instructions) and the runtime brief (daemon-side CLAUDE.md). Asserting each
 // half in isolation is exactly how the original contradiction shipped — the
-// briefing said "move it to in_review when the goal is met" while the runtime
+// briefing said "move it to in_review_internal when the goal is met" while the runtime
 // brief said "do not change status unless the comment asks", and a member's
 // delivery comment never asks.
 //
@@ -78,9 +78,11 @@ func TestSquadAssignedLeaderCanWrapUpOnCommentTurn(t *testing.T) {
 		}
 	}
 
-	// End to end: both halves must agree that in_review is reachable here.
+	// End to end: both halves must agree that in_review_internal is reachable
+	// here. Agent delivery stops at internal review (AST-1215); in_review is a
+	// team promotion, so it is deliberately NOT the wrap-up command.
 	combined := briefing + "\n" + brief
-	if !strings.Contains(combined, "multica issue status <issue-id> in_review") {
+	if !strings.Contains(combined, "multica issue status <issue-id> in_review_internal") {
 		t.Error("combined instructions never tell the owning leader how to wrap up")
 	}
 }
@@ -119,8 +121,8 @@ func TestGuestLeaderCannotChangeStatusOnCommentTurn(t *testing.T) {
 	}
 	combined := briefing + "\n" + brief
 	if strings.Contains(combined, "multica issue status <issue-id> in_review") {
-		t.Error("combined instructions hand a guest leader an in_review command for " +
-			"an issue assigned to someone else")
+		t.Error("combined instructions hand a guest leader a review-status command " +
+			"for an issue assigned to someone else")
 	}
 	// The prohibition wraps across source lines, so match on compacted text.
 	compact := strings.Join(strings.Fields(briefing), " ")

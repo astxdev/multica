@@ -144,9 +144,10 @@ Contracts:
 - pending task dedup is applied (squad.go:1042-1048);
 - parent status is agent-managed: assignment brief (`writeWorkflowAssignment` with
   `IsSquadLeader`) requires `in_progress` on the first turn and forbids
-  unconditional `in_review` on that dispatch turn; Squad Operating Protocol
-  (`squad_briefing.go`) owns the ongoing `in_progress` → later `in_review`
-  contract. `StartTask` / `CompleteTask` do not write issue status. On
+  unconditional `in_review_internal` on that dispatch turn; Squad Operating
+  Protocol (`squad_briefing.go`) owns the ongoing `in_progress` → later
+  `in_review_internal` contract (`in_review` is the team's promotion, not the
+  leader's). `StartTask` / `CompleteTask` do not write issue status. On
   comment-triggered leader turns `writeWorkflowComment` names that protocol
   responsibility as the one exception to "do not change status unless the
   comment asks" — without it the @mention-dispatch shape (no child issues, so
@@ -231,7 +232,8 @@ Contracts:
   ungated path; any future invocation gate must be added to BOTH together.
 - parent status is not auto-advanced by the barrier: the system comment asks the
   leader to continue or — when the overall goal is met — run
-  `multica issue status <parent-id> in_review`. That explicit ask is what lets a
+  `multica issue status <parent-id> in_review_internal`. That explicit ask is
+  what lets a
   comment-triggered leader turn change status (the comment workflow otherwise
   forbids status flips unless asked). `done` remains human / integration owned.
 

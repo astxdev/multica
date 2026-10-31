@@ -261,7 +261,7 @@ func writeAvailableCommands(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("- `multica issue comment list <issue-id> [--roots-only] [--summary] [--thread <comment-id> [--tail N] | --recent N] [--since <RFC3339>] --output json` — thread-aware comment reads. Bound a wide read with `--roots-only --summary` (roots plus `reply_count` / `last_activity_at`, clipped bodies); bound a deep one with `--thread <id> --tail N`; add `--compact` to any JSON read to drop echoed/null/bookkeeping fields. Careful with `--recent N`: it caps THREADS, not comments, and can return the whole history on a small issue. Resolved-thread folding, paging cursors, and full flag semantics: `--help`.\n")
 	b.WriteString("- `multica issue create --title \"...\" [--description-file <path>] [--priority X] [--status X] [--assignee X | --assignee-id <uuid>] [--parent <issue-id>] [--stage N] [--project <project-id>] [--due-date <YYYY-MM-DD>] [--attachment <path>]` — create an issue. For agent-authored long descriptions prefer `--description-file <path>` (heredoc stdin can swallow trailing flags, #4182). Write that file inside your working directory (e.g. `./description.md`), never `/tmp` or shared paths — same workdir rule as `## Comment Formatting`.\n")
 	b.WriteString("- `multica issue update <id> [--title X] [--description-file <path>] [--priority X] [--status X] [--assignee X] [--parent <issue-id>] [--stage N] [--project <project-id>] [--due-date <YYYY-MM-DD>]` — update fields; pass `--parent \"\"` to clear parent.\n")
-	b.WriteString("- `multica issue status <id> <status>` — flip status (todo / in_progress / in_review_internal / in_review / done / blocked / backlog / cancelled). Review is two stages: `in_review_internal` is review by the team, `in_review` is review by whoever asked for the work. When the issue does not say which one it wants, deliver to `in_review`.\n")
+	b.WriteString("- `multica issue status <id> <status>` — flip status (todo / in_progress / in_review_internal / in_review / done / blocked / backlog / cancelled). Review is two stages, in flow order: `in_review_internal` is review by the team, `in_review` is review by whoever asked for the work. **Agents always deliver to `in_review_internal`** — the team promotes it to `in_review` once internal review passes. Only move an issue to `in_review` yourself when the issue or a comment explicitly asks for it.\n")
 	b.WriteString("- `multica issue children <id> [--output json]` — list a parent's sub-issues grouped by stage.\n")
 	b.WriteString("- `multica issue comment add <issue-id> [--content \"...\" | --content-file <path> | --content-stdin] [--parent <comment-id>] [--attachment <path>]` — post a comment. Agent-authored bodies MUST use `--content-file`; see `## Comment Formatting` for why. `multica issue comment add --help` for full flags.\n")
 	b.WriteString("- `multica issue metadata list <issue-id> [--output json]` — list KV metadata.\n")
@@ -547,13 +547,16 @@ func writeWorkflowAutopilot(b *strings.Builder, ctx TaskContextForEnv) {
 // step is what made this one bloat in the first place.
 //
 // Ordinary agents own the full status arc for their issue: open with
-// in_progress, deliver with in_review. Squad leaders share the opening
-// in_progress step so the parent leaves todo as soon as coordination
-// starts, but their first assignment turn is only a dispatch — flipping
-// the parent to in_review there would mark unfinished multi-stage work
-// as ready for review. Leaders move the parent to in_review later, when
-// a re-trigger (member update / stage barrier) confirms the overall goal
-// is met; see the Squad Operating Protocol and child-done system comments.
+// in_progress, deliver with in_review_internal. Agent delivery always lands
+// in internal review — never in_review, which is review by whoever asked for
+// the work and is reached only by a human promoting it (or by an explicit ask
+// in the issue/comment). Squad leaders share the opening in_progress step so
+// the parent leaves todo as soon as coordination starts, but their first
+// assignment turn is only a dispatch — flipping the parent to
+// in_review_internal there would mark unfinished multi-stage work as ready for
+// review. Leaders move the parent to in_review_internal later, when a
+// re-trigger (member update / stage barrier) confirms the overall goal is met;
+// see the Squad Operating Protocol and child-done system comments.
 //
 // ctx.IsSquadLeader is a PER-TASK role, not agent configuration: branching on
 // it here does move brief bytes when the same agent runs leader one turn and
@@ -576,9 +579,9 @@ func writeWorkflowIssue(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("**Ownership mode only — you own the issue status this run** (skip any status call below that your Agent Identity forbids)\n\n")
 	b.WriteString("- Before step 4, run `multica issue status <issue-id> in_progress`.\n")
 	if ctx.IsSquadLeader {
-		b.WriteString("- After this initial dispatch, leave the parent issue `in_progress` — do NOT move it to `in_review` or `done` on this turn. Dispatching members is not completion. You will be re-triggered when members post updates or a stage closes; only then, if the overall goal is met, move the parent to `in_review`.\n")
+		b.WriteString("- After this initial dispatch, leave the parent issue `in_progress` — do NOT move it to `in_review_internal`, `in_review` or `done` on this turn. Dispatching members is not completion. You will be re-triggered when members post updates or a stage closes; only then, if the overall goal is met, move the parent to `in_review_internal`.\n")
 	} else {
-		b.WriteString("- When done, run `multica issue status <issue-id> in_review`.\n")
+		b.WriteString("- When done, run `multica issue status <issue-id> in_review_internal` — delivered work goes to internal review, never straight to `in_review`.\n")
 	}
 	b.WriteString("- If blocked, run `multica issue status <issue-id> blocked`, and post a comment explaining the blocker unless your Agent Identity forbids issue comments.\n\n")
 
@@ -606,7 +609,7 @@ func writeWorkflowIssue(b *strings.Builder, ctx TaskContextForEnv) {
 		// grant only exists in the instructions when the server determined
 		// this issue is assigned to this squad (see buildSquadLeaderBriefing);
 		// a guest leader gets the opposite text and this stays a no-op.
-		b.WriteString("- Do NOT change the issue status unless the comment explicitly asks for it — **or** a section in your instructions explicitly grants you ownership of this issue's status (the Squad Operating Protocol's \"Own the parent issue status\" responsibility). That section only appears when this issue is assigned to your squad; when it is there, treat it as a standing instruction and move the parent to `in_review` on the turn you confirm the overall goal is met, without waiting to be asked. When it is absent, the rule above is absolute. **The Ownership-mode status steps above do not apply in Reply mode.**\n\n")
+		b.WriteString("- Do NOT change the issue status unless the comment explicitly asks for it — **or** a section in your instructions explicitly grants you ownership of this issue's status (the Squad Operating Protocol's \"Own the parent issue status\" responsibility). That section only appears when this issue is assigned to your squad; when it is there, treat it as a standing instruction and move the parent to `in_review_internal` on the turn you confirm the overall goal is met, without waiting to be asked. When it is absent, the rule above is absolute. **The Ownership-mode status steps above do not apply in Reply mode.**\n\n")
 	} else {
 		b.WriteString("- Do NOT change the issue status unless the comment explicitly asks for it. **The Ownership-mode status steps above do not apply in Reply mode.**\n\n")
 	}
