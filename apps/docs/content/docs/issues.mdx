@@ -45,7 +45,7 @@ Assignment does not bypass an agent's Access; when assigning to a squad, the lea
 | `backlog` | Not starting yet. An issue assigned to an agent only creates a task after it leaves `backlog`. |
 | `todo` | Scoped and waiting to start. |
 | `in_progress` | Being worked on. |
-| `in_review_internal` | Has a result waiting for review by the team, before it goes out. |
+| `in_review_internal` | Has a result waiting for review by the team, before it goes out. Agents deliver here. |
 | `in_review` | Has a result waiting for review by whoever asked for the work. |
 | `done` | Finished. |
 | `blocked` | Cannot continue for now. |
@@ -53,7 +53,7 @@ Assignment does not bypass an agent's Access; when assigning to a squad, the lea
 
 There is no fixed flow between statuses — members and agents can change them directly.
 
-Once an issue is assigned to an agent, the agent is expected to move the status from `backlog` / `todo` to `in_progress` when it starts, then to `in_review` when it has delivered. These updates are written explicitly by the agent through the Multica CLI during the run — the server does not flip issue status when a task starts or completes (apart from the two system exceptions below). `done` is usually a human confirmation, or an integration such as a PR with close intent that merges.
+Once an issue is assigned to an agent, the agent is expected to move the status from `backlog` / `todo` to `in_progress` when it starts, then to `in_review_internal` when it has delivered. Agent delivery always stops at internal review — promoting an issue from `in_review_internal` to `in_review` (review by whoever asked for the work) is the team's call, and an agent only writes `in_review` when the issue or a comment explicitly asks for it. These updates are written explicitly by the agent through the Multica CLI during the run — the server does not flip issue status when a task starts or completes (apart from the two system exceptions below). `done` is usually a human confirmation, or an integration such as a PR with close intent that merges.
 
 <Callout type="info">
 Two changes are made by the system:

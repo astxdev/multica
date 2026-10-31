@@ -87,16 +87,18 @@ const squadParentStatusOwned = `6. **Own the parent issue status.** This issue i
    ` + "`" + `in_progress` + "`" + ` and keep it there while members work — a successful
    dispatch is not completion. On later turns, do not flip status for
    routine progress updates. When you confirm the overall goal is met, run
-   ` + "`" + `multica issue status <issue-id> in_review` + "`" + ` — this responsibility is
-   itself the standing instruction that authorizes that change, so do it even
-   when no comment asked you to. Leave ` + "`" + `done` + "`" + ` to a human reviewer or
-   existing integrations (for example a PR with close intent that merges).`
+   ` + "`" + `multica issue status <issue-id> in_review_internal` + "`" + ` — this
+   responsibility is itself the standing instruction that authorizes that
+   change, so do it even when no comment asked you to. Delivered work stops at
+   internal review: leave ` + "`" + `in_review` + "`" + ` (review by whoever asked for the
+   work) and ` + "`" + `done` + "`" + ` to a human reviewer or existing integrations (for
+   example a PR with close intent that merges).`
 
 // squadParentStatusNotOwned is responsibility 6 for every other leader path:
 // an @squad mention on an issue owned by someone else (MUL-3724), and
 // quick-create, where no issue exists yet on this turn. Granting status
 // ownership there would let a squad that was merely pulled in to answer a
-// question push another assignee's in-flight issue to in_review.
+// question push another assignee's in-flight issue to in_review_internal.
 const squadParentStatusNotOwned = `6. **Do NOT change this issue's status.** This issue is not assigned to your
    squad — you were pulled in by an @mention (or this is a quick-create turn,
    where the issue does not exist yet). Its status belongs to its own

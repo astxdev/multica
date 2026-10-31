@@ -171,7 +171,9 @@ Current behavior:
 - parent issue status is agent-managed (same model as direct agent assignment):
   the leader's first assignment turn should move the parent to `in_progress`
   and keep it there while members work; the leader moves the parent to
-  `in_review` only when a later re-trigger confirms the overall goal is met.
+  `in_review_internal` only when a later re-trigger confirms the overall goal is
+  met. Delivery stops at internal review; `in_review` is the team's call, not
+  the leader's.
   Completing a leader `task` (including the first dispatch) does not itself
   change issue status;
 - that status authority is granted only when the issue's `assignee_type` /
@@ -263,9 +265,11 @@ authorizes them.
 - `role` is roster context, not automatic scheduling.
 - Backlog assignment does not immediately start work.
 - First leader dispatch is not parent completion — parent stays `in_progress`
-  until the leader later confirms the overall goal and moves it to `in_review`.
+  until the leader later confirms the overall goal and moves it to
+  `in_review_internal`.
 - The server does not auto-flip parent status when child issues finish; it only
-  wakes the leader with an explicit ask (including `in_review` when wrapping up).
+  wakes the leader with an explicit ask (including `in_review_internal` when
+  wrapping up).
 - Getting the leader briefing does NOT imply status authority. A squad
   `@`-mentioned into an issue assigned to someone else is a guest: roster and
   delegation rules yes, `multica issue status` no.

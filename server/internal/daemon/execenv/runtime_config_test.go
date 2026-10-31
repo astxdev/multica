@@ -373,7 +373,8 @@ func TestIssueWorkflowHonorsAgentIdentity(t *testing.T) {
 		// Step 4 keeps only what the enumeration cannot express: a
 		// delegation-only role stops once the delegation is delivered.
 		"If your role is delegation-only, perform the allowed delegation work and stop once that outcome is delivered",
-		"When done, run `multica issue status <issue-id> in_review`.",
+		// AST-1215: agent delivery always lands in internal review.
+		"When done, run `multica issue status <issue-id> in_review_internal`",
 		"If blocked, run `multica issue status <issue-id> blocked`, and post a comment explaining the blocker unless your Agent Identity forbids issue comments.",
 	} {
 		if !strings.Contains(out, want) {
@@ -393,7 +394,8 @@ func TestIssueWorkflowHonorsAgentIdentity(t *testing.T) {
 }
 
 // Squad-leader briefs must open the parent with in_progress, but must not
-// treat the first dispatch turn as completion (no unconditional in_review).
+// treat the first dispatch turn as completion (no unconditional
+// in_review_internal).
 func TestSquadLeaderIssueWorkflowKeepsParentInProgress(t *testing.T) {
 	t.Parallel()
 	const issueID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -408,15 +410,15 @@ func TestSquadLeaderIssueWorkflowKeepsParentInProgress(t *testing.T) {
 		// The guest-leader contract test (handler side) bans any runnable
 		// in_review command shape from reaching a guest — the dispatch rule
 		// therefore states the prohibition without a command form.
-		"do NOT move it to `in_review` or `done` on this turn",
-		"only then, if the overall goal is met, move the parent to `in_review`",
+		"do NOT move it to `in_review_internal`, `in_review` or `done` on this turn",
+		"only then, if the overall goal is met, move the parent to `in_review_internal`",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("squad-leader issue brief missing %q\n---\n%s", want, out)
 		}
 	}
 
-	if strings.Contains(out, "When done, run `multica issue status <issue-id> in_review`") {
+	if strings.Contains(out, "When done, run `multica issue status <issue-id> in_review_internal`") {
 		t.Errorf("squad-leader issue brief must not contain the ordinary-agent completion step\n---\n%s", out)
 	}
 }
